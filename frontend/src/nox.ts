@@ -1,27 +1,30 @@
-import { BrowserProvider, JsonRpcProvider, JsonRpcSigner, isAddress, Network } from "ethers";
+import { BrowserProvider, JsonRpcProvider, JsonRpcSigner, Contract, isAddress, Network } from "ethers";
 import { createEthersHandleClient, NotYetComputedHandleError } from "@iexec-nox/handle";
 
-export const SEPOLIA_CHAIN_ID = 11155111n;
-export const SEPOLIA_HEX = "0xaa36a7";
-export const EXPLORER = "https://sepolia.etherscan.io";
-
-// Minimal ABI matching CipherPayroll (same interactions the Node scripts use).
-// euint256 / externalEuint256 are bytes32 at the ABI boundary.
-export const PAYROLL_ABI = [
-  "function owner() view returns (address)",
-  "function setSalary(address employee, bytes32 encryptedSalary, bytes inputProof) external",
-  "function getMySalary() view returns (bytes32)",
-  "function isEmployee(address) view returns (bool)",
-  "function employeeCount() view returns (uint256)",
-  "event EmployeeAdded(address indexed employee)",
-  "event SalarySet(address indexed employee, bytes32 salaryHandle)",
-];
+// ---- Arbitrum Sepolia (Nox confidential payroll treasury lives here) ----
+export const ARBITRUM_CHAIN_ID = 421614n;
+export const ARBITRUM_HEX = "0x66eee";
+export const EXPLORER = "https://sepolia.arbiscan.io";
 
 export type Hex = `0x${string}`;
 
-/** Address configured via frontend/.env (copied from deployment.payroll.json). */
-export function getConfiguredAddress(): string | null {
-  const a = import.meta.env.VITE_CONTRACT_ADDRESS?.trim();
+// Minimal ABIs (euint256/externalEuint256 are bytes32 at the ABI boundary).
+export const TREASURY_ABI = [
+  "function runPayroll(address[] employees, bytes32[] encryptedAmounts, bytes[] inputProofs) external",
+  "function treasuryBalance() view returns (bytes32)",
+  "function grantTreasuryView() external",
+  "function batchCount() view returns (uint256)",
+  "function token() view returns (address)",
+  "function owner() view returns (address)",
+];
+export const TOKEN_ABI = [
+  "function mint(address to, bytes32 encryptedAmount, bytes inputProof) returns (bytes32)",
+  "function confidentialBalanceOf(address account) view returns (bytes32)",
+  "function owner() view returns (address)",
+];
+
+export function getConfiguredTreasury(): string | null {
+  const a = import.meta.env.VITE_TREASURY_ADDRESS?.trim();
   return a && isAddress(a) ? a : null;
 }
 
@@ -32,25 +35,19 @@ export function getInjected(): NonNullable<Window["ethereum"]> {
 }
 
 /**
- * Dedicated Sepolia read RPC (same endpoint your Node scripts use). The SDK does
- * on-chain reads through the provider we hand it; injected wallet RPCs are often
- * unreliable for eth_call, so we READ here and only SIGN with the wallet.
+ * Dedicated Arbitrum Sepolia read RPC (same idea as the Ethereum-Sepolia app):
+ * the SDK and reads go through this, not the wallet's RPC. batchMaxCount:1 avoids
+ * the "could not coalesce" 404s some wallet/proxy RPCs throw on batched requests.
  */
 export function getReadProvider(): JsonRpcProvider {
-  const url = import.meta.env.VITE_SEPOLIA_RPC_URL;
+  const url = import.meta.env.VITE_ARBITRUM_RPC_URL;
   if (!url) {
     throw new Error(
-      "Missing VITE_SEPOLIA_RPC_URL. Create frontend/.env with your Sepolia RPC " +
-        "(same URL as SEPOLIA_RPC_URL in your scripts). See .env.example."
+      "Missing VITE_ARBITRUM_RPC_URL. Create .env with your Arbitrum Sepolia RPC (see .env.example)."
     );
   }
-  // batchMaxCount: 1 disables JSON-RPC request batching. ethers v6 batches
-  // multiple calls into one array POST by default, and some RPC endpoints
-  // return 404 for batched requests — which surfaces as ethers' confusing
-  // "could not coalesce error". Sending one request at a time avoids it.
-  // staticNetwork pins the chain so ethers never re-probes eth_chainId/blockNumber.
-  const sepolia = Network.from("sepolia");
-  return new JsonRpcProvider(url, sepolia, { staticNetwork: sepolia, batchMaxCount: 1 });
+  const net = Network.from(421614);
+  return new JsonRpcProvider(url, net, { staticNetwork: net, batchMaxCount: 1 });
 }
 
 export interface Connection {
@@ -67,9 +64,9 @@ export async function connectWallet(): Promise<Connection> {
   await provider.send("eth_requestAccounts", []);
 
   let net = await provider.getNetwork();
-  if (net.chainId !== SEPOLIA_CHAIN_ID) {
+  if (net.chainId !== ARBITRUM_CHAIN_ID) {
     try {
-      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SEPOLIA_HEX }] });
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: ARBITRUM_HEX }] });
     } catch (err: unknown) {
       const code = (err as { code?: number })?.code;
       if (code === 4902) {
@@ -77,21 +74,21 @@ export async function connectWallet(): Promise<Connection> {
           method: "wallet_addEthereumChain",
           params: [
             {
-              chainId: SEPOLIA_HEX,
-              chainName: "Ethereum Sepolia",
-              nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
-              rpcUrls: ["https://rpc.sepolia.org"],
+              chainId: ARBITRUM_HEX,
+              chainName: "Arbitrum Sepolia",
+              nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc"],
               blockExplorerUrls: [EXPLORER],
             },
           ],
         });
       } else {
-        throw new Error("Please switch your wallet to Ethereum Sepolia to continue.");
+        throw new Error("Please switch your wallet to Arbitrum Sepolia to continue.");
       }
     }
     provider = new BrowserProvider(eth);
     net = await provider.getNetwork();
-    if (net.chainId !== SEPOLIA_CHAIN_ID) throw new Error("Wallet is not on Ethereum Sepolia.");
+    if (net.chainId !== ARBITRUM_CHAIN_ID) throw new Error("Wallet is not on Arbitrum Sepolia.");
   }
 
   const signer = await provider.getSigner();
@@ -100,11 +97,7 @@ export async function connectWallet(): Promise<Connection> {
   return { provider, signer, readProvider, address, chainId: net.chainId };
 }
 
-/**
- * Signer-shaped object the SDK accepts: READS via dedicated RPC (`provider`),
- * SIGNING via the wallet. The SDK's SignerAdapter uses `signer.provider` for
- * reads and `signer` for getAddress/signTypedData.
- */
+/** Hybrid signer: READS via dedicated RPC, SIGNING via the wallet. */
 function makeHybridSigner(walletSigner: JsonRpcSigner, readProvider: JsonRpcProvider) {
   return {
     provider: readProvider,
@@ -114,10 +107,41 @@ function makeHybridSigner(walletSigner: JsonRpcSigner, readProvider: JsonRpcProv
   };
 }
 
-/** Nox HandleClient: reads via dedicated RPC, signs via the wallet. */
 export async function makeHandleClient(walletSigner: JsonRpcSigner, readProvider: JsonRpcProvider) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return createEthersHandleClient(makeHybridSigner(walletSigner, readProvider) as any);
+}
+
+/**
+ * Send a tx robustly: price it (fees/gas/nonce) and wait for it via the reliable
+ * read RPC, so the wallet's (sometimes flaky) RPC is only used to sign + broadcast.
+ * Returns the tx hash.
+ */
+export async function sendTx(
+  conn: Connection,
+  contractAddress: string,
+  abi: string[],
+  method: string,
+  args: unknown[]
+): Promise<string> {
+  const contract = new Contract(contractAddress, abi, conn.signer);
+  const data = contract.interface.encodeFunctionData(method, args);
+  const [feeData, nonce, gasEstimate] = await Promise.all([
+    conn.readProvider.getFeeData(),
+    conn.readProvider.getTransactionCount(conn.address),
+    conn.readProvider.estimateGas({ from: conn.address, to: contractAddress, data }),
+  ]);
+  const overrides: Record<string, unknown> = { nonce, gasLimit: (gasEstimate * 12n) / 10n };
+  if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+    overrides.maxFeePerGas = feeData.maxFeePerGas;
+    overrides.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+  } else if (feeData.gasPrice) {
+    overrides.gasPrice = feeData.gasPrice;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tx = await (contract as any)[method](...args, overrides);
+  await conn.readProvider.waitForTransaction(tx.hash);
+  return tx.hash as string;
 }
 
 export function shortAddr(a: string): string {
@@ -138,7 +162,6 @@ export function fullError(e: unknown): string {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Permanent authorization denial thrown by the SDK's on-chain isViewer check. */
 export class DecryptDeniedError extends Error {
   constructor() {
     super("Not authorized to decrypt this handle.");
@@ -146,25 +169,25 @@ export class DecryptDeniedError extends Error {
   }
 }
 
-/** Transient: gateway hasn't indexed the ACL grant yet, or handle not computed. */
+/** Transient: gateway hasn't indexed the ACL grant yet. */
 export function isTransientDecryptError(err: unknown): boolean {
   if (err instanceof NotYetComputedHandleError) return true;
   const m = err instanceof Error ? err.message : String(err);
   return /status:\s*403/.test(m) || /not a viewer/i.test(m) || /access_denied/i.test(m);
 }
 
-/** Permanent: the connected wallet is not an ACL viewer of this handle. */
+/** Permanent: this wallet is not an ACL viewer of the handle (wrong wallet / no pay). */
 export function isAuthDenied(err: unknown): boolean {
   const m = err instanceof Error ? err.message : String(err);
   return /is not authorized to decrypt/i.test(m) || /does not exist or user/i.test(m);
 }
 
 /**
- * Decrypt a salary handle with the ACL-indexing-lag retry (mirrors payrollDemo.ts).
- * - transient 403 / not-yet-computed -> retry (calls onWait with elapsed seconds)
- * - permanent auth denial -> throw DecryptDeniedError (UI shows "not authorized")
+ * Decrypt a confidential balance handle with the ~60s ACL-indexing-lag retry.
+ * - transient gateway 403 -> retry (calls onWait with elapsed seconds)
+ * - permanent auth denial -> DecryptDeniedError
  */
-export async function decryptSalary(
+export async function decryptHandle(
   client: { decrypt: (h: Hex) => Promise<{ value: unknown }> },
   handle: Hex,
   onWait?: (secs: number) => void,
@@ -189,4 +212,13 @@ export async function decryptSalary(
     }
   }
   throw lastErr;
+}
+
+/** A balance handle of all-zero bytes means "no confidential balance yet". */
+export function isZeroHandle(handle: string): boolean {
+  try {
+    return BigInt(handle) === 0n;
+  } catch {
+    return false;
+  }
 }

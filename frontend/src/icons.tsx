@@ -102,3 +102,38 @@ export function Bolt({ size = 16, className, strokeWidth = 2 }: IProps) {
     </svg>
   );
 }
+
+export function Coins({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <ellipse cx="8" cy="6" rx="5" ry="2.4" />
+      <path d="M3 6v5c0 1.3 2.2 2.4 5 2.4s5-1.1 5-2.4V6" />
+      <path d="M11 13.6c.6 1 2.6 1.8 5 1.8 2.8 0 5-1.1 5-2.4V8" />
+      <path d="M16 9.4c2.8 0 5-1.1 5-2.4S18.8 4.6 16 4.6c-1.3 0-2.5.2-3.4.6" />
+    </svg>
+  );
+}
+export function Users({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <path d="M16 5.2a3.2 3.2 0 0 1 0 5.6" />
+      <path d="M17 14.2A5.5 5.5 0 0 1 20.5 19" />
+    </svg>
+  );
+}
+export function Plus({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+export function Trash({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" />
+    </svg>
+  );
+}

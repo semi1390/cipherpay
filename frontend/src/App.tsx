@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
-import { isAddress } from "ethers";
-import { connectWallet, getConfiguredAddress, shortAddr, fullError, EXPLORER, type Connection } from "./nox";
-import { Lock, Shield, Wallet, Bolt, ArrowUpRight, Spinner, Ban, CheckCircle } from "./icons";
+import { Contract, isAddress } from "ethers";
+import {
+  connectWallet,
+  getConfiguredTreasury,
+  shortAddr,
+  fullError,
+  EXPLORER,
+  TREASURY_ABI,
+  type Connection,
+} from "./nox";
+import { Lock, Shield, Wallet, Coins, Eye, ArrowUpRight, Spinner, Ban, CheckCircle } from "./icons";
 import EmployerView from "./EmployerView";
 import EmployeeView from "./EmployeeView";
 
-const LS_KEY = "cipherpay.contractAddress";
+const LS_KEY = "cipherpay.treasuryAddress";
 
 export default function App() {
   const [conn, setConn] = useState<Connection | null>(null);
@@ -13,11 +21,13 @@ export default function App() {
   const [connecting, setConnecting] = useState(false);
   const [view, setView] = useState<"employer" | "employee">("employer");
 
-  const initial = getConfiguredAddress() ?? localStorage.getItem(LS_KEY) ?? "";
-  const [addr, setAddr] = useState<string>(isAddress(initial) ? initial : "");
-  const [addrInput, setAddrInput] = useState<string>(initial);
+  const initial = getConfiguredTreasury() ?? localStorage.getItem(LS_KEY) ?? "";
+  const [treasury, setTreasury] = useState<string>(isAddress(initial) ? initial : "");
+  const [treasuryInput, setTreasuryInput] = useState<string>(initial);
 
-  // Keep app state consistent when the wallet switches account or network.
+  const [tokenAddr, setTokenAddr] = useState<string | null>(null);
+  const [tokenErr, setTokenErr] = useState<string | null>(null);
+
   useEffect(() => {
     const eth = window.ethereum;
     if (!eth?.on) return;
@@ -29,6 +39,21 @@ export default function App() {
       eth.removeListener?.("chainChanged", reload);
     };
   }, []);
+
+  // Read the token address from the treasury once we have both.
+  useEffect(() => {
+    if (!conn || !treasury) return;
+    let cancelled = false;
+    setTokenAddr(null);
+    setTokenErr(null);
+    const c = new Contract(treasury, TREASURY_ABI, conn.readProvider);
+    c.token()
+      .then((t: string) => !cancelled && setTokenAddr(t))
+      .catch((e: unknown) => !cancelled && setTokenErr(fullError(e)));
+    return () => {
+      cancelled = true;
+    };
+  }, [conn, treasury]);
 
   async function onConnect() {
     setConnErr(null);
@@ -42,14 +67,14 @@ export default function App() {
     }
   }
 
-  function useThisContract() {
-    if (!isAddress(addrInput)) {
-      setConnErr("Enter a valid contract address (0x… 40 hex chars).");
+  function useThisTreasury() {
+    if (!isAddress(treasuryInput)) {
+      setConnErr("Enter a valid treasury contract address (0x…).");
       return;
     }
     setConnErr(null);
-    setAddr(addrInput);
-    localStorage.setItem(LS_KEY, addrInput);
+    setTreasury(treasuryInput);
+    localStorage.setItem(LS_KEY, treasuryInput);
   }
 
   return (
@@ -58,17 +83,17 @@ export default function App() {
         <div className="nav-inner">
           <div className="brand">
             <span className="brand-mark">
-              <Lock size={16} />
+              <Lock size={15} />
             </span>
-            Cipher<em>Pay</em>
+            CipherPay
           </div>
           {conn ? (
             <span className="wallet">
-              <span className="dot" /> Sepolia · {shortAddr(conn.address)}
+              <span className="dot" /> Arbitrum Sepolia · {shortAddr(conn.address)}
             </span>
           ) : (
             <span className="chip">
-              <Shield size={13} /> Ethereum Sepolia
+              <Shield size={13} /> Arbitrum Sepolia
             </span>
           )}
         </div>
@@ -83,27 +108,25 @@ export default function App() {
           )}
 
           {!conn ? (
-            /* ---------------- LANDING / HERO ---------------- */
             <section className="hero">
               <span className="eyebrow">
                 <Lock size={13} /> Confidential on-chain payroll
               </span>
               <h1 className="hero-title">
-                Payroll on-chain.
+                Pay your team on-chain.
                 <br />
-                Salaries, <span className="grad">private.</span>
+                Amounts stay <span className="a">private.</span>
               </h1>
               <p className="hero-sub">
-                Confidential payroll for modern companies — verifiable payments, hidden amounts,
-                powered by iExec Nox. Every salary is encrypted in the browser before it touches
-                Ethereum, and only its owner can decrypt it.
+                CipherPay funds a confidential treasury and pays employees in a single on-chain run —
+                verifiable on Arbiscan, with every amount encrypted. Only each employee can reveal
+                their own pay.
               </p>
-
               <div className="hero-actions">
                 <button className="btn btn-primary btn-lg" onClick={onConnect} disabled={connecting}>
                   {connecting ? (
                     <>
-                      <Spinner className="spin" /> Connecting…
+                      <Spinner size={17} className="spin" /> Connecting…
                     </>
                   ) : (
                     <>
@@ -111,103 +134,89 @@ export default function App() {
                     </>
                   )}
                 </button>
-                <span className="chip">
-                  <Bolt size={13} /> MetaMask · Sepolia only
-                </span>
+                <span className="chip">MetaMask · Arbitrum Sepolia</span>
               </div>
-
-              <div className="hero-trust">
-                <span className="trust">
-                  <Shield size={14} /> Powered by iExec Nox
-                </span>
-                <span className="trust">
-                  <Lock size={14} /> End-to-end encrypted
-                </span>
-                <span className="trust">
-                  <CheckCircle size={14} /> Verifiable on Etherscan
-                </span>
-              </div>
-
-              {/* the core contrast: plaintext in → ciphertext on-chain */}
-              <div className="proof">
-                <div className="proof-row plain">
-                  <span className="proof-label">Salary you enter</span>
-                  <span className="proof-plain">$120,000</span>
+              <div className="hero-points">
+                <div className="point">
+                  <Coins size={17} /> Fund a confidential treasury with encrypted balances
                 </div>
-                <div className="proof-arrow">encrypted in your browser ↓</div>
-                <div className="proof-row chain">
-                  <span className="proof-label">
-                    <Lock size={14} /> Stored on-chain
-                  </span>
-                  <span className="proof-cipher">0x0000aa36a72301669bdf…a989bc</span>
+                <div className="point">
+                  <CheckCircle size={17} /> Run payroll — hidden amounts, public proof on Arbiscan
+                </div>
+                <div className="point">
+                  <Eye size={17} /> Each employee reveals only their own pay
                 </div>
               </div>
             </section>
-          ) : !addr ? (
-            /* ---------------- CONTRACT SELECT ---------------- */
-            <section className="panel">
-              <div className="panel-head">
-                <span className="icon-badge brand">
-                  <Shield size={20} />
+          ) : !treasury ? (
+            <section className="card">
+              <div className="card-head">
+                <span className="badge-icon">
+                  <Shield size={19} />
                 </span>
                 <div>
-                  <h2 className="title">Connect a payroll</h2>
+                  <h2 className="title">Connect your treasury</h2>
                   <p className="desc">
-                    Enter your deployed CipherPayroll address (from{" "}
-                    <code>deployment.payroll.json</code>), or set <code>VITE_CONTRACT_ADDRESS</code>{" "}
-                    in <code>frontend/.env</code>.
+                    Enter your deployed CipherPayrollTreasury address on Arbitrum Sepolia (the{" "}
+                    <code>treasury</code> field from <code>deployment.payroll-treasury.json</code>),
+                    or set <code>VITE_TREASURY_ADDRESS</code> in <code>.env</code>.
                   </p>
                 </div>
               </div>
               <div className="field">
-                <label className="label">Contract address</label>
+                <label className="label">Treasury address</label>
                 <input
                   className="input"
-                  placeholder="0x… CipherPayroll address"
-                  value={addrInput}
-                  onChange={(e) => setAddrInput(e.target.value.trim())}
+                  placeholder="0x… CipherPayrollTreasury"
+                  value={treasuryInput}
+                  onChange={(e) => setTreasuryInput(e.target.value.trim())}
                   spellCheck={false}
                 />
               </div>
               <div className="field">
-                <button className="btn btn-primary" onClick={useThisContract}>
+                <button className="btn btn-primary" onClick={useThisTreasury}>
                   Continue <ArrowUpRight size={15} />
                 </button>
               </div>
             </section>
           ) : (
-            /* ---------------- APP (tabs + views) ---------------- */
             <section>
-              <div className="tabs" role="tablist">
-                <button
-                  className={`tab ${view === "employer" ? "on" : ""}`}
-                  onClick={() => setView("employer")}
-                >
+              <div className="tabs">
+                <button className={`tab ${view === "employer" ? "on" : ""}`} onClick={() => setView("employer")}>
                   Employer
                 </button>
-                <button
-                  className={`tab ${view === "employee" ? "on" : ""}`}
-                  onClick={() => setView("employee")}
-                >
+                <button className={`tab ${view === "employee" ? "on" : ""}`} onClick={() => setView("employee")}>
                   Employee
                 </button>
               </div>
 
               <div className="ctx">
-                <span>Payroll</span>
-                <span className="mono">{shortAddr(addr)}</span>
-                <a className="link" href={`${EXPLORER}/address/${addr}`} target="_blank" rel="noreferrer">
-                  Etherscan <ArrowUpRight size={13} />
+                <span>Treasury</span>
+                <span className="mono">{shortAddr(treasury)}</span>
+                <a className="link" href={`${EXPLORER}/address/${treasury}`} target="_blank" rel="noreferrer">
+                  Arbiscan <ArrowUpRight size={13} />
                 </a>
-                <button className="textbtn" onClick={() => setAddr("")}>
+                <button className="textbtn" onClick={() => setTreasury("")}>
                   change
                 </button>
               </div>
 
-              {view === "employer" ? (
-                <EmployerView conn={conn} contractAddr={addr} />
+              {tokenErr ? (
+                <div className="note err">
+                  <Ban size={16} />
+                  <span>
+                    Couldn't read the token from this treasury. Is <code>{shortAddr(treasury)}</code> a
+                    CipherPayrollTreasury on Arbitrum Sepolia? {tokenErr}
+                  </span>
+                </div>
+              ) : !tokenAddr ? (
+                <div className="note accent">
+                  <Spinner size={16} className="spin" /> Loading treasury…
+                </div>
+              ) : view === "employer" ? (
+                <EmployerView conn={conn} treasuryAddr={treasury} tokenAddr={tokenAddr} />
               ) : (
-                <EmployeeView conn={conn} contractAddr={addr} />
+                <EmployeeView conn={conn} tokenAddr={tokenAddr} />
               )}
             </section>
           )}
@@ -215,7 +224,7 @@ export default function App() {
       </main>
 
       <footer className="footer">
-        <Lock size={13} /> Amounts encrypted client-side · never stored in plaintext on-chain
+        <Lock size={12} /> Amounts encrypted client-side · confidential ERC-7984 on iExec Nox
       </footer>
     </div>
   );
