@@ -1,0 +1,27 @@
+{
+  "name": "cipherpay-nox-spike",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Day-1 plumbing spike proving the iExec Nox toolchain deploys and round-trips (encrypt -> compute -> decrypt) on Ethereum Sepolia.",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:sepolia": "tsx scripts/deploy.ts",
+    "roundtrip:sepolia": "tsx scripts/roundtrip.ts",
+    "test:local": "hardhat test"
+  },
+  "dependencies": {
+    "@iexec-nox/handle": "^0.1.0-beta.13",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4"
+  },
+  "devDependencies": {
+    "@iexec-nox/nox-hardhat-plugin": "^0.1.0",
+    "@iexec-nox/nox-protocol-contracts": "^0.2.4",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.3",
+    "@types/node": "^22.9.0",
+    "hardhat": "^3.4.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

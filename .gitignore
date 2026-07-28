@@ -1,0 +1,12 @@
+node_modules/
+.env
+artifacts/
+cache/
+deployment.json
+*.log
+
+# safety - catch env and node_modules anywhere
+**/.env
+**/node_modules/
+frontend/.env
+frontend/node_modules/
