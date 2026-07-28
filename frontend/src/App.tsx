@@ -53,57 +53,57 @@ export default function App() {
   }
 
   return (
-    <div className="cp-app">
-      <header className="cp-topbar">
-        <div className="cp-topbar-inner">
-          <div className="cp-brand">
-            <span className="cp-brand-mark">
+    <div className="app">
+      <header className="nav">
+        <div className="nav-inner">
+          <div className="brand">
+            <span className="brand-mark">
               <Lock size={16} />
             </span>
             Cipher<em>Pay</em>
           </div>
           {conn ? (
-            <span className="cp-wallet">
-              <span className="cp-dot" /> Sepolia · {shortAddr(conn.address)}
+            <span className="wallet">
+              <span className="dot" /> Sepolia · {shortAddr(conn.address)}
             </span>
           ) : (
-            <span className="cp-chip">
+            <span className="chip">
               <Shield size={13} /> Ethereum Sepolia
             </span>
           )}
         </div>
       </header>
 
-      <main className="cp-main">
-        <div className="cp-container">
+      <main className="main">
+        <div className="wrap">
           {connErr && (
-            <div className="cp-alert cp-alert--err">
+            <div className="note err">
               <Ban size={16} /> <span>{connErr}</span>
             </div>
           )}
 
           {!conn ? (
             /* ---------------- LANDING / HERO ---------------- */
-            <section className="cp-hero">
-              <span className="cp-eyebrow">
+            <section className="hero">
+              <span className="eyebrow">
                 <Lock size={13} /> Confidential on-chain payroll
               </span>
-              <h1 className="cp-headline">
-                Payroll, on-chain.
+              <h1 className="hero-title">
+                Payroll on-chain.
                 <br />
-                Salaries, <span className="cp-accent">private.</span>
+                Salaries, <span className="grad">private.</span>
               </h1>
-              <p className="cp-subhead">
-                CipherPay encrypts every salary in the browser before it ever touches Ethereum.
-                Public verifiability, private amounts — settled on-chain, decrypted only by the
-                person it belongs to.
+              <p className="hero-sub">
+                Confidential payroll for modern companies — verifiable payments, hidden amounts,
+                powered by iExec Nox. Every salary is encrypted in the browser before it touches
+                Ethereum, and only its owner can decrypt it.
               </p>
 
-              <div className="cp-hero-cta">
-                <button className="cp-btn cp-btn-primary cp-btn-lg" onClick={onConnect} disabled={connecting}>
+              <div className="hero-actions">
+                <button className="btn btn-primary btn-lg" onClick={onConnect} disabled={connecting}>
                   {connecting ? (
                     <>
-                      <Spinner className="cp-spin" /> Connecting…
+                      <Spinner className="spin" /> Connecting…
                     </>
                   ) : (
                     <>
@@ -111,62 +111,66 @@ export default function App() {
                     </>
                   )}
                 </button>
-                <span className="cp-chip">
+                <span className="chip">
                   <Bolt size={13} /> MetaMask · Sepolia only
                 </span>
               </div>
 
-              <div className="cp-trust">
-                <span className="cp-trust-item">
+              <div className="hero-trust">
+                <span className="trust">
                   <Shield size={14} /> Powered by iExec Nox
                 </span>
-                <span className="cp-trust-item">
+                <span className="trust">
                   <Lock size={14} /> End-to-end encrypted
                 </span>
-                <span className="cp-trust-item">
+                <span className="trust">
                   <CheckCircle size={14} /> Verifiable on Etherscan
                 </span>
               </div>
 
               {/* the core contrast: plaintext in → ciphertext on-chain */}
-              <div className="cp-proof">
-                <div className="cp-proof-row plain">
-                  <span className="cp-proof-label">Salary you enter</span>
-                  <span className="cp-proof-plain">$120,000</span>
+              <div className="proof">
+                <div className="proof-row plain">
+                  <span className="proof-label">Salary you enter</span>
+                  <span className="proof-plain">$120,000</span>
                 </div>
-                <div className="cp-proof-arrow">encrypted in your browser ↓</div>
-                <div className="cp-proof-row chain">
-                  <span className="cp-proof-label">
+                <div className="proof-arrow">encrypted in your browser ↓</div>
+                <div className="proof-row chain">
+                  <span className="proof-label">
                     <Lock size={14} /> Stored on-chain
                   </span>
-                  <span className="cp-mono" style={{ fontSize: 12.5, color: "var(--accent)" }}>
-                    0x0000aa36a72301669bdf…a989bc
-                  </span>
+                  <span className="proof-cipher">0x0000aa36a72301669bdf…a989bc</span>
                 </div>
               </div>
             </section>
           ) : !addr ? (
             /* ---------------- CONTRACT SELECT ---------------- */
-            <section className="cp-card">
-              <h2 className="cp-title">
-                <Shield size={20} /> Connect a payroll
-              </h2>
-              <p className="cp-desc">
-                Enter your deployed CipherPayroll address (from <code>deployment.payroll.json</code>),
-                or set <code>VITE_CONTRACT_ADDRESS</code> in <code>frontend/.env</code>.
-              </p>
-              <div className="cp-field">
-                <label className="cp-label">Contract address</label>
+            <section className="panel">
+              <div className="panel-head">
+                <span className="icon-badge brand">
+                  <Shield size={20} />
+                </span>
+                <div>
+                  <h2 className="title">Connect a payroll</h2>
+                  <p className="desc">
+                    Enter your deployed CipherPayroll address (from{" "}
+                    <code>deployment.payroll.json</code>), or set <code>VITE_CONTRACT_ADDRESS</code>{" "}
+                    in <code>frontend/.env</code>.
+                  </p>
+                </div>
+              </div>
+              <div className="field">
+                <label className="label">Contract address</label>
                 <input
-                  className="cp-input"
+                  className="input"
                   placeholder="0x… CipherPayroll address"
                   value={addrInput}
                   onChange={(e) => setAddrInput(e.target.value.trim())}
                   spellCheck={false}
                 />
               </div>
-              <div className="cp-field">
-                <button className="cp-btn cp-btn-primary" onClick={useThisContract}>
+              <div className="field">
+                <button className="btn btn-primary" onClick={useThisContract}>
                   Continue <ArrowUpRight size={15} />
                 </button>
               </div>
@@ -174,28 +178,28 @@ export default function App() {
           ) : (
             /* ---------------- APP (tabs + views) ---------------- */
             <section>
-              <div className="cp-segment" role="tablist">
+              <div className="tabs" role="tablist">
                 <button
-                  className={`cp-segment-btn ${view === "employer" ? "is-active" : ""}`}
+                  className={`tab ${view === "employer" ? "on" : ""}`}
                   onClick={() => setView("employer")}
                 >
                   Employer
                 </button>
                 <button
-                  className={`cp-segment-btn ${view === "employee" ? "is-active" : ""}`}
+                  className={`tab ${view === "employee" ? "on" : ""}`}
                   onClick={() => setView("employee")}
                 >
                   Employee
                 </button>
               </div>
 
-              <div className="cp-context">
+              <div className="ctx">
                 <span>Payroll</span>
-                <span className="cp-mono">{shortAddr(addr)}</span>
-                <a className="cp-link" href={`${EXPLORER}/address/${addr}`} target="_blank" rel="noreferrer">
+                <span className="mono">{shortAddr(addr)}</span>
+                <a className="link" href={`${EXPLORER}/address/${addr}`} target="_blank" rel="noreferrer">
                   Etherscan <ArrowUpRight size={13} />
                 </a>
-                <button className="cp-textbtn" onClick={() => setAddr("")}>
+                <button className="textbtn" onClick={() => setAddr("")}>
                   change
                 </button>
               </div>
@@ -210,9 +214,8 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="cp-footer">
-        <Lock size={13} /> Amounts encrypted client-side · never stored in plaintext on-chain ·
-        Ethereum Sepolia
+      <footer className="footer">
+        <Lock size={13} /> Amounts encrypted client-side · never stored in plaintext on-chain
       </footer>
     </div>
   );

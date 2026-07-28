@@ -64,20 +64,25 @@ export default function EmployeeView({ conn, contractAddr }: Props) {
   const busy = state.kind === "reading" || state.kind === "decrypting";
 
   return (
-    <div className="cp-card">
-      <h2 className="cp-title">
-        <Eye size={19} /> Reveal your salary
-      </h2>
-      <p className="cp-desc">
-        Your salary is decrypted locally, in your browser, only after the Nox gateway confirms
-        you're an authorized viewer. No one else — not even the employer — can decrypt it.
-      </p>
+    <div className="panel">
+      <div className="panel-head">
+        <span className="icon-badge brand">
+          <Eye size={20} />
+        </span>
+        <div>
+          <h2 className="title">Reveal your salary</h2>
+          <p className="desc">
+            Your salary is decrypted locally, in your browser, only after the Nox gateway confirms
+            you're an authorized viewer. No one else — not even the employer — can decrypt it.
+          </p>
+        </div>
+      </div>
 
-      <div className="cp-field">
-        <button className="cp-btn cp-btn-primary cp-btn-full cp-btn-lg" onClick={onReveal} disabled={busy}>
+      <div className="field">
+        <button className="btn btn-primary btn-block btn-lg" onClick={onReveal} disabled={busy}>
           {busy ? (
             <>
-              <Spinner className="cp-spin" /> Working…
+              <Spinner className="spin" /> Working…
             </>
           ) : (
             <>
@@ -88,64 +93,64 @@ export default function EmployeeView({ conn, contractAddr }: Props) {
       </div>
 
       {state.kind === "reading" && (
-        <div className="cp-working">
-          <Spinner className="cp-spin" size={20} />
-          <div className="cp-step">Reading your encrypted handle from the contract…</div>
+        <div className="working">
+          <Spinner className="spin" size={20} />
+          <div className="step">Reading your encrypted handle from the contract…</div>
         </div>
       )}
 
       {state.kind === "decrypting" && (
-        <div className="cp-enclave">
-          <div className="cp-enclave-head">
-            <span className="cp-lock">
-              <Lock size={19} />
+        <div className="enclave">
+          <div className="enclave-head">
+            <span className="cipher-lock">
+              <Lock size={20} />
             </span>
             <div>
-              <div className="cp-enclave-title">Decrypting in secure enclave…</div>
-              <div className="cp-enclave-sub">
+              <div className="enclave-title">Decrypting in secure enclave…</div>
+              <div className="enclave-sub">
                 Verifying your on-chain access grant and re-encrypting the key to you. This can take
                 up to a minute right after a salary is set.
               </div>
             </div>
           </div>
-          <div className="cp-scanbox">
-            <span className="cp-scan-cipher">
+          <div className="scanbox">
+            <span className="scan-cipher">
               0x0000aa36a72301669bdf843e30f104d73edf6358c77118366de8ccad40a989bc
             </span>
-            <span className="cp-scanline" />
+            <span className="scanline" />
           </div>
-          <div className="cp-timer">
-            elapsed {state.secs}s · waiting for gateway sync
+          <div className="timer">
+            <span className="dot" /> elapsed {state.secs}s · waiting for gateway sync
           </div>
         </div>
       )}
 
       {state.kind === "revealed" && (
-        <div className="cp-reveal">
-          <div className="cp-reveal-label">
+        <div className="reveal">
+          <div className="reveal-label">
             <LockOpen size={14} /> Your salary
           </div>
-          <div className="cp-amount">{state.salary.toLocaleString()}</div>
-          <div className="cp-reveal-note">Decrypted locally from the on-chain handle · visible only to you</div>
+          <div className="reveal-amount">{state.salary.toLocaleString()}</div>
+          <div className="reveal-note">Decrypted locally from the on-chain handle · visible only to you</div>
         </div>
       )}
 
       {state.kind === "nosalary" && (
-        <div className="cp-empty">No salary is set for this address on this payroll.</div>
+        <div className="empty">No salary is set for this address on this payroll.</div>
       )}
 
       {state.kind === "denied" && (
-        <div className="cp-denied">
-          <span className="cp-denied-icon">
+        <div className="denied">
+          <span className="denied-icon">
             <Ban size={20} />
           </span>
           <div>
-            <div className="cp-denied-title">Access denied — this salary isn't yours</div>
-            <div className="cp-denied-body">
-              Only the employee this salary belongs to can decrypt it. The on-chain ACL rejected the
-              request before the gateway ever released the key.
+            <div className="denied-title">Only this employee can view this salary</div>
+            <div className="denied-body">
+              This salary isn't yours to decrypt. The on-chain ACL rejected the request before the
+              gateway ever released the key — exactly as intended.
             </div>
-            <span className="cp-denied-tag">
+            <span className="denied-tag">
               <Shield size={13} /> Privacy enforced by the protocol
             </span>
           </div>
@@ -153,7 +158,7 @@ export default function EmployeeView({ conn, contractAddr }: Props) {
       )}
 
       {state.kind === "error" && (
-        <div className="cp-alert cp-alert--err">
+        <div className="note err">
           <Ban size={16} /> <span>{state.message}</span>
         </div>
       )}

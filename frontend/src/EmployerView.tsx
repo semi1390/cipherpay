@@ -9,7 +9,7 @@ import {
   type Connection,
   type Hex,
 } from "./nox";
-import { Lock, Shield, CheckCircle, Check, ArrowUpRight, Spinner, Ban, Bolt } from "./icons";
+import { Lock, Shield, CheckCircle, ArrowUpRight, Spinner, Ban, Bolt } from "./icons";
 
 interface Props {
   conn: Connection;
@@ -114,21 +114,26 @@ export default function EmployerView({ conn, contractAddr }: Props) {
   const busy = status.kind === "working";
 
   return (
-    <div className="cp-card">
-      <h2 className="cp-title">
-        <Lock size={19} /> Set an encrypted salary
-      </h2>
-      <p className="cp-desc">
-        The amount is encrypted in your browser and stored on-chain as an opaque handle. The number
-        never appears on Ethereum — only the employee can decrypt it.
-      </p>
+    <div className="panel">
+      <div className="panel-head">
+        <span className="icon-badge cipher">
+          <Lock size={20} />
+        </span>
+        <div>
+          <h2 className="title">Set an encrypted salary</h2>
+          <p className="desc">
+            The amount is encrypted in your browser and stored on-chain as an opaque handle — the
+            number never appears on Ethereum, and only the employee can decrypt it.
+          </p>
+        </div>
+      </div>
 
       {ownerLoading ? (
-        <div className="cp-alert cp-alert--info" style={{ marginTop: 18 }}>
-          <Spinner className="cp-spin" /> Checking contract owner…
+        <div className="note cipher">
+          <Spinner className="spin" /> Checking contract owner…
         </div>
       ) : owner === null ? (
-        <div className="cp-alert cp-alert--err" style={{ marginTop: 18 }}>
+        <div className="note err">
           <Ban size={16} />
           <span>
             Couldn't read <code>owner()</code> at {shortAddr(contractAddr)}. Is this a CipherPayroll
@@ -136,26 +141,26 @@ export default function EmployerView({ conn, contractAddr }: Props) {
           </span>
         </div>
       ) : !isOwner ? (
-        <div className="cp-alert cp-alert--warn" style={{ marginTop: 18 }}>
+        <div className="note warn">
           <Shield size={16} />
           <span>
             This wallet ({shortAddr(conn.address)}) is <b>not the payroll owner</b>. Only the
             deployer can set salaries. Connect the owner wallet:{" "}
-            <span className="cp-mono">{owner}</span>.
+            <span className="mono">{owner}</span>.
           </span>
         </div>
       ) : (
-        <div style={{ marginTop: 18 }}>
-          <span className="cp-owner cp-owner--yes">
+        <div style={{ marginTop: 16 }}>
+          <span className="pill ok">
             <CheckCircle size={15} /> You are the owner
           </span>
         </div>
       )}
 
-      <div className="cp-field">
-        <label className="cp-label">Employee wallet</label>
+      <div className="field">
+        <label className="label">Employee wallet</label>
         <input
-          className="cp-input"
+          className="input"
           placeholder="0x… employee address"
           value={employee}
           onChange={(e) => setEmployee(e.target.value.trim())}
@@ -164,12 +169,12 @@ export default function EmployerView({ conn, contractAddr }: Props) {
         />
       </div>
 
-      <div className="cp-field">
-        <label className="cp-label">
+      <div className="field">
+        <label className="label">
           <Lock size={13} /> Salary — encrypted before it leaves this device
         </label>
         <input
-          className="cp-input"
+          className="input"
           placeholder="100000"
           value={salary}
           onChange={(e) => setSalary(e.target.value)}
@@ -178,15 +183,11 @@ export default function EmployerView({ conn, contractAddr }: Props) {
         />
       </div>
 
-      <div className="cp-field">
-        <button
-          className="cp-btn cp-btn-primary cp-btn-full"
-          onClick={onSubmit}
-          disabled={busy || !isOwner}
-        >
+      <div className="field">
+        <button className="btn btn-primary btn-block" onClick={onSubmit} disabled={busy || !isOwner}>
           {busy ? (
             <>
-              <Spinner className="cp-spin" /> Working…
+              <Spinner className="spin" /> Working…
             </>
           ) : (
             <>
@@ -197,50 +198,50 @@ export default function EmployerView({ conn, contractAddr }: Props) {
       </div>
 
       {status.kind === "working" && (
-        <div className="cp-working">
-          <Spinner className="cp-spin" size={20} />
+        <div className="working">
+          <Spinner className="spin" size={20} />
           <div>
-            <div className="cp-step">{status.step}</div>
-            <div className="cp-substep">Your salary is encrypted client-side — it never leaves in plaintext.</div>
+            <div className="step">{status.step}</div>
+            <div className="substep">Encrypted client-side — the amount never leaves in plaintext.</div>
           </div>
         </div>
       )}
 
       {status.kind === "error" && (
-        <div className="cp-alert cp-alert--err">
+        <div className="note err">
           <Ban size={16} /> <span>{status.message}</span>
         </div>
       )}
 
       {status.kind === "done" && (
         <>
-          <div className="cp-alert cp-alert--info" style={{ marginTop: 18 }}>
+          <div className="note cipher">
             <CheckCircle size={16} />
             <span>
-              Salary set for <span className="cp-mono">{shortAddr(status.employee)}</span> and
-              confirmed on Sepolia.
+              Salary set for <span className="mono">{shortAddr(status.employee)}</span> and confirmed
+              on Sepolia.
             </span>
           </div>
 
           {/* the core story: what's actually on-chain is ciphertext */}
-          <div className="cp-encrypted">
-            <div className="cp-encrypted-head">
-              <span className="cp-lock">
-                <Lock size={19} />
+          <div className="cipher-panel">
+            <div className="cipher-head">
+              <span className="cipher-lock">
+                <Lock size={20} />
               </span>
               <div>
-                <div className="cp-encrypted-title">🔒 Amount encrypted on-chain</div>
-                <div className="cp-encrypted-sub">This is exactly what's stored — an opaque handle, not a number.</div>
+                <div className="cipher-title">🔒 Amount encrypted on-chain</div>
+                <div className="cipher-subtitle">This is exactly what's stored — an opaque handle, not a number.</div>
               </div>
             </div>
-            <div className="cp-cipher">{status.handle}</div>
-            <div className="cp-encrypted-note">
+            <div className="cipher-code">{status.handle}</div>
+            <div className="cipher-note">
               Open the transaction's <b>Input Data</b> on Etherscan — the salary amount appears
               nowhere. Only the handle + proof are on-chain.
             </div>
-            <div className="cp-etherscan">
+            <div style={{ marginTop: 15 }}>
               <a
-                className="cp-btn cp-btn-ghost"
+                className="btn btn-cipher"
                 href={`${EXPLORER}/tx/${status.txHash}`}
                 target="_blank"
                 rel="noreferrer"

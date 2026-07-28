@@ -1,5 +1,9 @@
 /**
- * CipherPayroll end-to-end demo on Ethereum Sepolia.
+ * CipherPayroll end-to-end demo — runs on Ethereum Sepolia OR Arbitrum Sepolia.
+ *
+ * The Nox library resolves the correct NoxCompute address per chain (via
+ * block.chainid), and the SDK resolves gateway/subgraph from the RPC's chainId,
+ * so the same demo works on either network — only the RPC decides.
  *
  *   1. Deploy a fresh CipherPayroll (employer = PRIVATE_KEY).
  *   2. Employer encrypts a salary per employee and calls setSalary(...).
@@ -11,12 +15,15 @@
  *   5. Isolation: an employee cannot decrypt another's salary; nor can the employer.
  *
  * Decrypt reuses the gateway-indexing-lag retry (the on-chain grant is instant,
- * but the gateway authorizes off an indexed ACL that trails chain head ~60s+ on
- * Sepolia). Decrypts run in parallel so the whole roster waits out the lag once.
- * Employees need NO Sepolia ETH (view call + gasless decrypt); only the employer
- * pays gas.
+ * but the gateway authorizes off an indexed ACL that trails chain head ~60s+).
+ * Decrypts run in parallel so the whole roster waits out the lag once.
+ * Employees need NO gas (view call + gasless decrypt); only the employer pays gas.
  *
- * Env vars: SEPOLIA_RPC_URL, PRIVATE_KEY (employer, funded).
+ * Env vars:
+ *   RPC_URL       - RPC for the target chain. Falls back to SEPOLIA_RPC_URL
+ *                   (Ethereum Sepolia). For Arbitrum Sepolia, set RPC_URL to an
+ *                   Arbitrum Sepolia RPC.
+ *   PRIVATE_KEY   - employer (funded on the target chain).
  * Run:  npx tsx scripts/payrollDemo.ts
  */
 import "dotenv/config";
@@ -29,6 +36,12 @@ import { createEthersHandleClient, NotYetComputedHandleError } from "@iexec-nox/
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 type Hex = `0x${string}`;
+
+// Nox-supported networks (label by chainId).
+const CHAINS: Record<string, string> = {
+  "11155111": "Ethereum Sepolia",
+  "421614": "Arbitrum Sepolia",
+};
 
 const ABI = [
   "function setSalary(address employee, bytes32 encryptedSalary, bytes inputProof) external",
@@ -46,6 +59,15 @@ function requireEnv(name: string): string {
     throw new Error(`Missing ${name}. Copy .env.example to .env and fill it in (see README.md).`);
   }
   return v.trim();
+}
+
+/** First defined env var among `names` (used so RPC_URL falls back to SEPOLIA_RPC_URL). */
+function firstEnv(...names: string[]): string {
+  for (const n of names) {
+    const v = process.env[n];
+    if (v && v.trim() !== "") return v.trim();
+  }
+  throw new Error(`Set one of: ${names.join(", ")} in .env.`);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -122,15 +144,19 @@ async function expectDenied(
 }
 
 async function main() {
-  const rpcUrl = requireEnv("SEPOLIA_RPC_URL");
+  const rpcUrl = firstEnv("RPC_URL", "SEPOLIA_RPC_URL");
   const employerKey = requireEnv("PRIVATE_KEY");
 
   const provider = new JsonRpcProvider(rpcUrl);
   const employer = new Wallet(employerKey, provider);
 
   const net = await provider.getNetwork();
-  if (net.chainId !== 11155111n) {
-    console.warn(`WARNING: chainId ${net.chainId} is not Sepolia (11155111).`);
+  const chainName = CHAINS[net.chainId.toString()];
+  if (!chainName) {
+    console.warn(
+      `WARNING: chainId ${net.chainId} is not a Nox network ` +
+        `(11155111 Ethereum Sepolia / 421614 Arbitrum Sepolia).`
+    );
   }
 
   // --- 1) Deploy a fresh CipherPayroll -------------------------------------
@@ -141,6 +167,7 @@ async function main() {
   const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
 
   console.log(`Employer : ${employer.address}`);
+  console.log(`Network  : ${chainName ?? `chain ${net.chainId}`} (chainId ${net.chainId})`);
   console.log("Deploying a fresh CipherPayroll ...");
   const factory = new ContractFactory(artifact.abi, artifact.bytecode, employer);
   const deployed = await factory.deploy();
@@ -216,7 +243,7 @@ async function main() {
 
   console.log("");
   console.log("=====================================================");
-  console.log(" CipherPayroll demo OK:");
+  console.log(` CipherPayroll demo OK on ${chainName ?? `chain ${net.chainId}`}:`);
   console.log("  - identical salaries -> DISTINCT stored handles (no equality leak)");
   console.log("  - each employee decrypted ONLY their own, correct salary");
   console.log("  - cross-employee and employer decryption were denied by ACL");
