@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
-import { Contract, isAddress } from "ethers";
+import { Contract, isAddress, parseUnits, formatUnits } from "ethers";
 import {
   makeHandleClient,
   sendTx,
   decryptHandle,
   DecryptDeniedError,
   TREASURY_ABI,
-  TOKEN_ABI,
+  WRAPPER_ABI,
+  USDC_ABI,
   EXPLORER,
   shortAddr,
   fullError,
   type Connection,
+  type TokenMeta,
   type Hex,
 } from "./nox";
 import { Coins, Users, Lock, CheckCircle, Shield, Ban, Spinner, ArrowUpRight, Plus, Trash, Eye } from "./icons";
@@ -18,7 +20,7 @@ import { Coins, Users, Lock, CheckCircle, Shield, Ban, Spinner, ArrowUpRight, Pl
 interface Props {
   conn: Connection;
   treasuryAddr: string;
-  tokenAddr: string;
+  meta: TokenMeta;
 }
 
 type Flow =
@@ -39,66 +41,91 @@ interface Row {
   address: string;
   amount: string;
 }
-
 let rowId = 1;
 
-export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
+export default function EmployerView({ conn, treasuryAddr, meta }: Props) {
+  const dec = meta.decimals;
+  const fmt = (v: bigint) => formatUnits(v, dec);
+  const parseAmt = (s: string): bigint | null => {
+    try {
+      const v = parseUnits(s.trim(), dec);
+      return v > 0n ? v : null;
+    } catch {
+      return null;
+    }
+  };
+
   const [owner, setOwner] = useState<string | null>(null);
   const [ownerLoading, setOwnerLoading] = useState(true);
   const isOwner = owner !== null && owner.toLowerCase() === conn.address.toLowerCase();
 
+  const [usdcBalance, setUsdcBalance] = useState<bigint | null>(null);
   const [fundAmount, setFundAmount] = useState("");
   const [fund, setFund] = useState<Flow>({ kind: "idle" });
+  const [faucet, setFaucet] = useState<Flow>({ kind: "idle" });
 
   const [rows, setRows] = useState<Row[]>([{ id: rowId++, address: "", amount: "" }]);
   const [payroll, setPayroll] = useState<Flow>({ kind: "idle" });
   const [reveal, setReveal] = useState<Reveal>({ kind: "idle" });
 
-  useEffect(() => {
-    let cancelled = false;
-    setOwnerLoading(true);
-    const c = new Contract(treasuryAddr, TREASURY_ABI, conn.readProvider);
-    c.owner()
-      .then((o: string) => !cancelled && setOwner(o))
-      .catch(() => !cancelled && setOwner(null))
-      .finally(() => !cancelled && setOwnerLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [treasuryAddr, conn.readProvider]);
-
-  function parseAmount(s: string): bigint | null {
+  async function refreshUsdc() {
     try {
-      const v = BigInt(s.trim());
-      return v > 0n ? v : null;
+      const bal = (await new Contract(meta.underlying, USDC_ABI, conn.readProvider).balanceOf(conn.address)) as bigint;
+      setUsdcBalance(bal);
     } catch {
-      return null;
+      setUsdcBalance(null);
     }
   }
 
-  // ---- Fund treasury: mint encrypted balance to the treasury -------------
+  useEffect(() => {
+    let cancelled = false;
+    setOwnerLoading(true);
+    new Contract(treasuryAddr, TREASURY_ABI, conn.readProvider)
+      .owner()
+      .then((o: string) => !cancelled && setOwner(o))
+      .catch(() => !cancelled && setOwner(null))
+      .finally(() => !cancelled && setOwnerLoading(false));
+    refreshUsdc();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treasuryAddr, conn.readProvider, conn.address]);
+
+  async function onFaucet() {
+    try {
+      setFaucet({ kind: "working", step: "Minting test USDC…" });
+      const amt = parseUnits("1000", dec);
+      const txHash = await sendTx(conn, meta.underlying, USDC_ABI, "mint", [conn.address, amt]);
+      await refreshUsdc();
+      setFaucet({ kind: "done", txHash });
+    } catch (e) {
+      setFaucet({ kind: "error", message: fullError(e) });
+    }
+  }
+
   async function onFund() {
-    const amount = parseAmount(fundAmount);
+    const amount = parseAmt(fundAmount);
     if (amount === null) {
-      setFund({ kind: "error", message: "Enter a positive whole number to fund." });
+      setFund({ kind: "error", message: `Enter a positive ${meta.underlyingSymbol} amount to wrap.` });
       return;
     }
     try {
-      setFund({ kind: "working", step: "Encrypting amount in your browser…" });
-      const client = await makeHandleClient(conn.signer, conn.readProvider);
-      // Fund amount is bound to the TOKEN (token.mint validates against itself).
-      const { handle, handleProof } = await client.encryptInput(amount, "uint256", tokenAddr as Hex);
-
-      setFund({ kind: "working", step: "Confirm the funding transaction in your wallet…" });
-      const txHash = await sendTx(conn, tokenAddr, TOKEN_ABI, "mint", [treasuryAddr, handle, handleProof]);
-
+      const usdc = new Contract(meta.underlying, USDC_ABI, conn.readProvider);
+      const allowance = (await usdc.allowance(conn.address, meta.wrapper)) as bigint;
+      if (allowance < amount) {
+        setFund({ kind: "working", step: `Approving the wrapper to use your ${meta.underlyingSymbol}…` });
+        await sendTx(conn, meta.underlying, USDC_ABI, "approve", [meta.wrapper, amount]);
+      }
+      setFund({ kind: "working", step: `Wrapping ${fmt(amount)} ${meta.underlyingSymbol} into the treasury…` });
+      const txHash = await sendTx(conn, meta.wrapper, WRAPPER_ABI, "wrap", [treasuryAddr, amount]);
+      await refreshUsdc();
       setFund({ kind: "done", txHash });
     } catch (e) {
       setFund({ kind: "error", message: fullError(e) });
     }
   }
 
-  // ---- Run payroll: batch confidential transfer to employees ------------
   async function onRunPayroll() {
     const clean = rows.map((r) => ({ address: r.address.trim(), amount: r.amount.trim() }));
     for (const r of clean) {
@@ -106,7 +133,7 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
         setPayroll({ kind: "error", message: `Invalid employee address: ${r.address || "(empty)"}` });
         return;
       }
-      if (parseAmount(r.amount) === null) {
+      if (parseAmt(r.amount) === null) {
         setPayroll({ kind: "error", message: `Invalid amount for ${shortAddr(r.address)}.` });
         return;
       }
@@ -115,32 +142,23 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
       setReveal({ kind: "idle" });
       setPayroll({ kind: "working", step: "Encrypting each amount (bound to the treasury)…" });
       const client = await makeHandleClient(conn.signer, conn.readProvider);
-
       const addrs: string[] = [];
       const handles: string[] = [];
       const proofs: string[] = [];
       for (const r of clean) {
-        // Pay amounts are bound to the TREASURY (runPayroll validates against itself).
-        const { handle, handleProof } = await client.encryptInput(
-          parseAmount(r.amount)!,
-          "uint256",
-          treasuryAddr as Hex
-        );
+        const { handle, handleProof } = await client.encryptInput(parseAmt(r.amount)!, "uint256", treasuryAddr as Hex);
         addrs.push(r.address);
         handles.push(handle);
         proofs.push(handleProof);
       }
-
       setPayroll({ kind: "working", step: "Confirm the payroll transaction in your wallet…" });
       const txHash = await sendTx(conn, treasuryAddr, TREASURY_ABI, "runPayroll", [addrs, handles, proofs]);
-
       setPayroll({ kind: "done", txHash });
     } catch (e) {
       setPayroll({ kind: "error", message: fullError(e) });
     }
   }
 
-  // ---- Reveal treasury remaining (owner granted by runPayroll) ----------
   async function onRevealTreasury() {
     try {
       setReveal({ kind: "decrypting", secs: 0 });
@@ -150,16 +168,14 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
       const value = await decryptHandle(client, handle, (secs) => setReveal({ kind: "decrypting", secs }));
       setReveal({ kind: "revealed", value });
     } catch (e) {
-      if (e instanceof DecryptDeniedError) {
-        setReveal({ kind: "denied" });
-        return;
-      }
+      if (e instanceof DecryptDeniedError) return setReveal({ kind: "denied" });
       setReveal({ kind: "error", message: fullError(e) });
     }
   }
 
   const funding = fund.kind === "working";
   const running = payroll.kind === "working";
+  const fauceting = faucet.kind === "working";
 
   return (
     <div className="card">
@@ -170,8 +186,9 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
         <div>
           <h2 className="title">Run confidential payroll</h2>
           <p className="desc">
-            Fund the treasury with an encrypted balance, then pay your team hidden amounts in one
-            on-chain run. Amounts are encrypted in your browser and never appear on-chain.
+            Wrap real {meta.underlyingSymbol} into the treasury, then pay your team hidden amounts of{" "}
+            {meta.tokenSymbol} (confidential {meta.underlyingSymbol}, 1:1). Employees can unwrap back to{" "}
+            {meta.underlyingSymbol} from My Pay.
           </p>
         </div>
       </div>
@@ -180,16 +197,12 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
         <div className="note accent">
           <Spinner size={16} className="spin" /> Checking treasury owner…
         </div>
-      ) : owner === null ? (
-        <div className="note err">
-          <Ban size={16} /> <span>Couldn't read the treasury owner. Check the address.</span>
-        </div>
       ) : !isOwner ? (
         <div className="note warn">
           <Shield size={16} />
           <span>
-            This wallet ({shortAddr(conn.address)}) is <b>not the treasury owner</b>. Only the owner
-            can fund or run payroll. Connect: <span className="mono">{owner}</span>.
+            This wallet ({shortAddr(conn.address)}) is <b>not the treasury owner</b>. Only the owner can
+            fund or run payroll. Connect: <span className="mono">{owner ?? "unknown"}</span>.
           </span>
         </div>
       ) : (
@@ -200,18 +213,37 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
         </div>
       )}
 
-      {/* 1. Fund */}
-      <div className="section-label">1 · Fund treasury</div>
+      <div className="section-label">1 · Fund treasury with {meta.underlyingSymbol}</div>
+      <div className="note" style={{ marginTop: 8 }}>
+        <Coins size={16} />
+        <span>
+          Your balance: <b>{usdcBalance !== null ? `${fmt(usdcBalance)} ${meta.underlyingSymbol}` : "…"}</b>
+          {isOwner && (
+            <>
+              {" · "}
+              <button className="textbtn" onClick={onFaucet} disabled={fauceting}>
+                {fauceting ? "getting…" : `get 1,000 test ${meta.underlyingSymbol}`}
+              </button>
+            </>
+          )}
+        </span>
+      </div>
+      {faucet.kind === "error" && (
+        <div className="note err">
+          <Ban size={16} /> <span>{faucet.message}</span>
+        </div>
+      )}
+
       <div className="field">
         <label className="label">
-          <Lock size={13} /> Amount to mint into the treasury (encrypted)
+          <Lock size={13} /> Amount to wrap into the treasury ({meta.underlyingSymbol})
         </label>
         <input
           className="input"
-          placeholder="1000000"
+          placeholder="1000"
           value={fundAmount}
           onChange={(e) => setFundAmount(e.target.value)}
-          inputMode="numeric"
+          inputMode="decimal"
           disabled={funding || !isOwner}
         />
       </div>
@@ -219,11 +251,11 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
         <button className="btn" onClick={onFund} disabled={funding || !isOwner}>
           {funding ? (
             <>
-              <Spinner size={16} className="spin" /> Funding…
+              <Spinner size={16} className="spin" /> Wrapping…
             </>
           ) : (
             <>
-              <Coins size={16} /> Fund treasury
+              <Coins size={16} /> Wrap into treasury
             </>
           )}
         </button>
@@ -233,7 +265,7 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
           <Spinner size={18} className="spin" />
           <div>
             <div className="step">{fund.step}</div>
-            <div className="sub">Encrypted client-side — the amount never leaves in plaintext.</div>
+            <div className="sub">The deposit is public; balances inside the treasury are hidden.</div>
           </div>
         </div>
       )}
@@ -246,7 +278,7 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
         <div className="note accent">
           <CheckCircle size={16} />
           <span>
-            Treasury funded (encrypted).{" "}
+            Wrapped into the treasury.{" "}
             <a className="link" href={`${EXPLORER}/tx/${fund.txHash}`} target="_blank" rel="noreferrer">
               View on Arbiscan <ArrowUpRight size={13} />
             </a>
@@ -254,8 +286,7 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
         </div>
       )}
 
-      {/* 2. Payroll */}
-      <div className="section-label">2 · Employees &amp; amounts</div>
+      <div className="section-label">2 · Employees &amp; amounts ({meta.tokenSymbol})</div>
       {rows.map((r) => (
         <div className="emp-row" key={r.id}>
           <input
@@ -272,10 +303,8 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
             className="input amt"
             placeholder="amount"
             value={r.amount}
-            onChange={(e) =>
-              setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, amount: e.target.value } : x)))
-            }
-            inputMode="numeric"
+            onChange={(e) => setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, amount: e.target.value } : x)))}
+            inputMode="decimal"
             disabled={running}
           />
           <button
@@ -331,12 +360,7 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
             <div className="privacy-row">
               <CheckCircle size={16} />
               <span className="k">Payroll settled on-chain</span>
-              <a
-                className="v link"
-                href={`${EXPLORER}/tx/${payroll.txHash}`}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a className="v link" href={`${EXPLORER}/tx/${payroll.txHash}`} target="_blank" rel="noreferrer">
                 Arbiscan <ArrowUpRight size={13} />
               </a>
             </div>
@@ -352,7 +376,6 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
             </div>
           </div>
 
-          {/* Treasury remaining */}
           {reveal.kind === "idle" && (
             <div className="field">
               <button className="btn" onClick={onRevealTreasury}>
@@ -369,8 +392,7 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
                 <div>
                   <div className="decrypting-title">Decrypting treasury balance…</div>
                   <div className="decrypting-sub">
-                    Verifying your access with the confidential gateway. This can take up to a minute
-                    right after a payroll run.
+                    Verifying your access with the confidential gateway (up to a minute after a run).
                   </div>
                 </div>
               </div>
@@ -385,13 +407,13 @@ export default function EmployerView({ conn, treasuryAddr, tokenAddr }: Props) {
               <div className="reveal-label">
                 <Coins size={14} /> Treasury remaining
               </div>
-              <div className="reveal-amount">{reveal.value.toLocaleString()}</div>
-              <div className="reveal-note">Encrypted on-chain · decrypted locally for the owner</div>
+              <div className="reveal-amount">{fmt(reveal.value)}</div>
+              <div className="reveal-unit">{meta.tokenSymbol}</div>
             </div>
           )}
           {reveal.kind === "denied" && (
             <div className="note warn">
-              <Shield size={16} /> <span>Not authorized to decrypt the treasury balance with this wallet.</span>
+              <Shield size={16} /> <span>Only the treasury owner can decrypt the balance.</span>
             </div>
           )}
           {reveal.kind === "error" && (

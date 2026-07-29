@@ -137,3 +137,79 @@ export function Trash({ size = 18, className, strokeWidth = 2 }: IProps) {
     </svg>
   );
 }
+
+export function Grid({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+      <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+      <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+      <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+    </svg>
+  );
+}
+export function History({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M3.5 12a8.5 8.5 0 1 1 2.6 6.1" />
+      <path d="M3.2 18.5v-4h4" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+export function Receipt({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M5 3.5h14v17l-2.3-1.4-2.3 1.4-2.4-1.4-2.4 1.4-2.3-1.4L5 20.5z" />
+      <path d="M9 8h6M9 12h6" />
+    </svg>
+  );
+}
+export function EyeOff({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M9.9 5.2A9.6 9.6 0 0 1 12 5c6.5 0 10 6.5 10 6.5a15 15 0 0 1-3.3 4M6.5 6.9A15 15 0 0 0 2 11.5S5.5 18 12 18a9.4 9.4 0 0 0 4.3-1" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+      <path d="M3 3l18 18" />
+    </svg>
+  );
+}
+export function TrendingUp({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M3 16l6-6 4 4 8-8" />
+      <path d="M15 6h6v6" />
+    </svg>
+  );
+}
+export function ArrowRight({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+export function Copy({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h8" />
+    </svg>
+  );
+}
+export function LogOut({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5M21 12H9" />
+    </svg>
+  );
+}
+export function ChevronDown({ size = 18, className, strokeWidth = 2 }: IProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}

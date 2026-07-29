@@ -7,25 +7,55 @@ import {
   fullError,
   EXPLORER,
   TREASURY_ABI,
+  resolveTokenMeta,
   type Connection,
+  type TokenMeta,
 } from "./nox";
-import { Lock, Shield, Wallet, Coins, Eye, ArrowUpRight, Spinner, Ban, CheckCircle } from "./icons";
+import { Lock, Shield, Grid, Coins, History as HistoryIcon, Receipt, ArrowUpRight, Spinner, Ban, Copy, LogOut, ChevronDown } from "./icons";
+import Landing from "./Landing";
+import Dashboard from "./Dashboard";
 import EmployerView from "./EmployerView";
-import EmployeeView from "./EmployeeView";
+import History from "./History";
+import MyPay from "./MyPay";
 
 const LS_KEY = "cipherpay.treasuryAddress";
+const PAGES = ["dashboard", "run", "history", "mypay"] as const;
+type Page = (typeof PAGES)[number];
+
+function parseHash(): Page {
+  const h = window.location.hash.replace(/^#\/?/, "").toLowerCase();
+  return (PAGES as readonly string[]).includes(h) ? (h as Page) : "dashboard";
+}
+
+const NAV: { page: Page; label: string; icon: typeof Grid }[] = [
+  { page: "dashboard", label: "Dashboard", icon: Grid },
+  { page: "run", label: "Run Payroll", icon: Coins },
+  { page: "history", label: "History", icon: HistoryIcon },
+  { page: "mypay", label: "My Pay", icon: Receipt },
+];
 
 export default function App() {
   const [conn, setConn] = useState<Connection | null>(null);
   const [connErr, setConnErr] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
-  const [view, setView] = useState<"employer" | "employee">("employer");
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const [page, setPage] = useState<Page>(parseHash());
+  useEffect(() => {
+    const on = () => setPage(parseHash());
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  const navigate = (p: Page) => {
+    window.location.hash = `/${p}`;
+    setPage(p);
+  };
 
   const initial = getConfiguredTreasury() ?? localStorage.getItem(LS_KEY) ?? "";
   const [treasury, setTreasury] = useState<string>(isAddress(initial) ? initial : "");
   const [treasuryInput, setTreasuryInput] = useState<string>(initial);
 
-  const [tokenAddr, setTokenAddr] = useState<string | null>(null);
+  const [meta, setMeta] = useState<TokenMeta | null>(null);
   const [tokenErr, setTokenErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,16 +70,20 @@ export default function App() {
     };
   }, []);
 
-  // Read the token address from the treasury once we have both.
   useEffect(() => {
     if (!conn || !treasury) return;
     let cancelled = false;
-    setTokenAddr(null);
+    setMeta(null);
     setTokenErr(null);
-    const c = new Contract(treasury, TREASURY_ABI, conn.readProvider);
-    c.token()
-      .then((t: string) => !cancelled && setTokenAddr(t))
-      .catch((e: unknown) => !cancelled && setTokenErr(fullError(e)));
+    (async () => {
+      try {
+        const tokenAddr = (await new Contract(treasury, TREASURY_ABI, conn.readProvider).token()) as string;
+        const m = await resolveTokenMeta(conn.readProvider, tokenAddr);
+        if (!cancelled) setMeta(m);
+      } catch (e) {
+        if (!cancelled) setTokenErr(fullError(e));
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -67,6 +101,14 @@ export default function App() {
     }
   }
 
+  function disconnect() {
+    setMenuOpen(false);
+    setConn(null);
+    setConnErr(null);
+    // Returns the app to the landing screen. Browser wallets stay connected at the
+    // extension level; this drops the app's session, which is what users expect.
+  }
+
   function useThisTreasury() {
     if (!isAddress(treasuryInput)) {
       setConnErr("Enter a valid treasury contract address (0x…).");
@@ -77,30 +119,115 @@ export default function App() {
     localStorage.setItem(LS_KEY, treasuryInput);
   }
 
+  const ready = !!conn && !!treasury && !!meta;
+
   return (
     <div className="app">
-      <header className="nav">
-        <div className="nav-inner">
-          <div className="brand">
-            <span className="brand-mark">
-              <Lock size={15} />
-            </span>
-            CipherPay
-          </div>
-          {conn ? (
-            <span className="wallet">
-              <span className="dot" /> Arbitrum Sepolia · {shortAddr(conn.address)}
-            </span>
-          ) : (
+      {/* ---- nav ---- */}
+      {!conn ? (
+        <header className="nav">
+          <div className="nav-inner">
+            <div className="brand">
+              <span className="brand-mark">
+                <Lock size={15} />
+              </span>
+              CipherPay
+            </div>
             <span className="chip">
               <Shield size={13} /> Arbitrum Sepolia
             </span>
+          </div>
+        </header>
+      ) : (
+        <header className="appnav">
+          <div className="appnav-inner">
+            <div className="brand">
+              <span className="brand-mark">
+                <Lock size={15} />
+              </span>
+              CipherPay
+            </div>
+            {ready && (
+              <nav className="navlinks">
+                {NAV.map((n) => (
+                  <button
+                    key={n.page}
+                    className={`navlink ${page === n.page ? "on" : ""}`}
+                    onClick={() => navigate(n.page)}
+                  >
+                    <n.icon size={15} /> {n.label}
+                  </button>
+                ))}
+              </nav>
+            )}
+            <div className="spacer" />
+            <div className="wallet-menu">
+              <button className="wallet" onClick={() => setMenuOpen((o) => !o)}>
+                <span className="dot" /> {shortAddr(conn.address)}
+                <ChevronDown size={13} className={menuOpen ? "chev open" : "chev"} />
+              </button>
+              {menuOpen && (
+                <>
+                  <div className="wm-backdrop" onClick={() => setMenuOpen(false)} />
+                  <div className="wallet-dropdown">
+                    <div className="wm-head">
+                      <span className="dot" /> Arbitrum Sepolia
+                      <span className="wm-addr">{shortAddr(conn.address)}</span>
+                    </div>
+                    <button
+                      className="wm-item"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(conn.address);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <Copy size={15} /> Copy address
+                    </button>
+                    <a
+                      className="wm-item"
+                      href={`${EXPLORER}/address/${conn.address}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <ArrowUpRight size={15} /> View on Arbiscan
+                    </a>
+                    <button
+                      className="wm-item"
+                      onClick={() => {
+                        setTreasury("");
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <Shield size={15} /> Change treasury
+                    </button>
+                    <div className="wm-sep" />
+                    <button className="wm-item danger" onClick={disconnect}>
+                      <LogOut size={15} /> Disconnect
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          {ready && (
+            <div className="navmobile">
+              {NAV.map((n) => (
+                <button
+                  key={n.page}
+                  className={`navlink ${page === n.page ? "on" : ""}`}
+                  onClick={() => navigate(n.page)}
+                >
+                  <n.icon size={15} /> {n.label}
+                </button>
+              ))}
+            </div>
           )}
-        </div>
-      </header>
+        </header>
+      )}
 
       <main className="main">
-        <div className="wrap">
+        <div className={conn ? "wrap-wide" : "wrap"}>
           {connErr && (
             <div className="note err">
               <Ban size={16} /> <span>{connErr}</span>
@@ -108,48 +235,9 @@ export default function App() {
           )}
 
           {!conn ? (
-            <section className="hero">
-              <span className="eyebrow">
-                <Lock size={13} /> Confidential on-chain payroll
-              </span>
-              <h1 className="hero-title">
-                Pay your team on-chain.
-                <br />
-                Amounts stay <span className="a">private.</span>
-              </h1>
-              <p className="hero-sub">
-                CipherPay funds a confidential treasury and pays employees in a single on-chain run —
-                verifiable on Arbiscan, with every amount encrypted. Only each employee can reveal
-                their own pay.
-              </p>
-              <div className="hero-actions">
-                <button className="btn btn-primary btn-lg" onClick={onConnect} disabled={connecting}>
-                  {connecting ? (
-                    <>
-                      <Spinner size={17} className="spin" /> Connecting…
-                    </>
-                  ) : (
-                    <>
-                      <Wallet size={17} /> Connect wallet
-                    </>
-                  )}
-                </button>
-                <span className="chip">MetaMask · Arbitrum Sepolia</span>
-              </div>
-              <div className="hero-points">
-                <div className="point">
-                  <Coins size={17} /> Fund a confidential treasury with encrypted balances
-                </div>
-                <div className="point">
-                  <CheckCircle size={17} /> Run payroll — hidden amounts, public proof on Arbiscan
-                </div>
-                <div className="point">
-                  <Eye size={17} /> Each employee reveals only their own pay
-                </div>
-              </div>
-            </section>
+            <Landing onConnect={onConnect} connecting={connecting} />
           ) : !treasury ? (
-            <section className="card">
+            <section className="card" style={{ marginTop: 34 }}>
               <div className="card-head">
                 <span className="badge-icon">
                   <Shield size={19} />
@@ -158,8 +246,8 @@ export default function App() {
                   <h2 className="title">Connect your treasury</h2>
                   <p className="desc">
                     Enter your deployed CipherPayrollTreasury address on Arbitrum Sepolia (the{" "}
-                    <code>treasury</code> field from <code>deployment.payroll-treasury.json</code>),
-                    or set <code>VITE_TREASURY_ADDRESS</code> in <code>.env</code>.
+                    <code>treasury</code> field from <code>deployment.payroll-treasury.json</code>), or
+                    set <code>VITE_TREASURY_ADDRESS</code> in <code>.env</code>.
                   </p>
                 </div>
               </div>
@@ -179,18 +267,26 @@ export default function App() {
                 </button>
               </div>
             </section>
+          ) : tokenErr ? (
+            <div className="note err" style={{ marginTop: 34 }}>
+              <Ban size={16} />
+              <span>
+                Couldn't read a wrapper-backed token from <code>{shortAddr(treasury)}</code>. This app
+                needs a treasury deployed with <code>deployWrapperPayroll.ts</code> (its token is the
+                USDC wrapper). {tokenErr}{" "}
+                <button className="textbtn" onClick={() => setTreasury("")}>
+                  change address
+                </button>
+              </span>
+            </div>
+          ) : !meta ? (
+            <div className="note accent" style={{ marginTop: 34 }}>
+              <Spinner size={16} className="spin" /> Loading treasury…
+            </div>
           ) : (
-            <section>
-              <div className="tabs">
-                <button className={`tab ${view === "employer" ? "on" : ""}`} onClick={() => setView("employer")}>
-                  Employer
-                </button>
-                <button className={`tab ${view === "employee" ? "on" : ""}`} onClick={() => setView("employee")}>
-                  Employee
-                </button>
-              </div>
-
-              <div className="ctx">
+            <>
+              {/* treasury context line */}
+              <div className="ctx" style={{ marginTop: 26, marginBottom: 0 }}>
                 <span>Treasury</span>
                 <span className="mono">{shortAddr(treasury)}</span>
                 <a className="link" href={`${EXPLORER}/address/${treasury}`} target="_blank" rel="noreferrer">
@@ -201,24 +297,13 @@ export default function App() {
                 </button>
               </div>
 
-              {tokenErr ? (
-                <div className="note err">
-                  <Ban size={16} />
-                  <span>
-                    Couldn't read the token from this treasury. Is <code>{shortAddr(treasury)}</code> a
-                    CipherPayrollTreasury on Arbitrum Sepolia? {tokenErr}
-                  </span>
-                </div>
-              ) : !tokenAddr ? (
-                <div className="note accent">
-                  <Spinner size={16} className="spin" /> Loading treasury…
-                </div>
-              ) : view === "employer" ? (
-                <EmployerView conn={conn} treasuryAddr={treasury} tokenAddr={tokenAddr} />
-              ) : (
-                <EmployeeView conn={conn} tokenAddr={tokenAddr} />
+              {page === "dashboard" && (
+                <Dashboard conn={conn} treasuryAddr={treasury} meta={meta} onNavigate={navigate} />
               )}
-            </section>
+              {page === "run" && <EmployerView conn={conn} treasuryAddr={treasury} meta={meta} />}
+              {page === "history" && <History conn={conn} treasuryAddr={treasury} />}
+              {page === "mypay" && <MyPay conn={conn} treasuryAddr={treasury} meta={meta} />}
+            </>
           )}
         </div>
       </main>
