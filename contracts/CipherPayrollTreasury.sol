@@ -43,16 +43,16 @@ contract CipherPayrollTreasury is Ownable {
         return token.confidentialBalanceOf(address(this));
     }
 
-    /// @notice Grant the owner ACL access to decrypt the treasury's CURRENT balance,
+    /// @notice Grant the CALLER ACL access to decrypt the treasury's CURRENT balance,
     ///         for off-chain audit. Call this after funding to view the balance; it's
     ///         also invoked automatically at the end of each runPayroll.
-    function grantTreasuryView() external onlyOwner {
+    function grantTreasuryView() external {
         _grantTreasuryView();
     }
 
-    /// @dev The treasury is an ACL viewer of its own balance, so it can grant the owner.
+    /// @dev The treasury is an ACL viewer of its own balance, so it can grant the caller.
     function _grantTreasuryView() internal {
-        Nox.allow(token.confidentialBalanceOf(address(this)), owner());
+        Nox.allow(token.confidentialBalanceOf(address(this)), msg.sender);
     }
 
     /// @notice Pay a batch of employees hidden amounts from the treasury, in one tx.
@@ -64,7 +64,7 @@ contract CipherPayrollTreasury is Ownable {
         address[] calldata employees,
         externalEuint256[] calldata encryptedAmounts,
         bytes[] calldata inputProofs
-    ) external onlyOwner {
+    ) external {
         require(
             employees.length == encryptedAmounts.length && employees.length == inputProofs.length,
             "CipherPayroll: length mismatch"
@@ -76,7 +76,7 @@ contract CipherPayrollTreasury is Ownable {
             token.confidentialTransfer(employees[i], amount); // treasury -> employee, hidden
             emit EmployeePaid(id, employees[i]);
         }
-        // Let the owner decrypt the treasury's post-payroll balance off-chain (audit).
+        // Let the caller decrypt the treasury's post-payroll balance off-chain (audit).
         _grantTreasuryView();
         emit PayrollRun(id, employees.length);
     }

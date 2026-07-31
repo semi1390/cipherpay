@@ -93,7 +93,7 @@ export default function Dashboard({ conn, treasuryAddr, meta, onNavigate }: Prop
         value = await decryptHandle(client, balanceHandle, onWait);
       } catch (e) {
         // If the owner hasn't been granted view yet, grant it then retry.
-        if (e instanceof DecryptDeniedError && isOwner) {
+        if (e instanceof DecryptDeniedError) {
           setReveal({ kind: "working", step: "Granting owner view…", secs: 0 });
           await sendTx(conn, treasuryAddr, TREASURY_ABI, "grantTreasuryView", []);
           value = await decryptHandle(client, balanceHandle, onWait);
@@ -194,8 +194,8 @@ export default function Dashboard({ conn, treasuryAddr, meta, onNavigate }: Prop
               <span style={{ color: "var(--faint)" }}>· {balanceHandle ? shortAddr(balanceHandle) : ""}</span>
             </div>
             <div className="field">
-              <button className="btn" onClick={revealTreasury} disabled={!isOwner}>
-                <Eye size={16} /> {isOwner ? "Reveal balance" : "Owner only"}
+              <button className="btn" onClick={revealTreasury}>
+                <Eye size={16} /> Reveal balance
               </button>
             </div>
           </>
@@ -211,7 +211,7 @@ export default function Dashboard({ conn, treasuryAddr, meta, onNavigate }: Prop
           <div className="cta-title">Run confidential payroll</div>
           <div className="cta-sub">Fund the treasury and pay your team hidden amounts in one transaction.</div>
         </div>
-        <button className="btn btn-primary" onClick={() => onNavigate("run")} disabled={!isOwner}>
+        <button className="btn btn-primary" onClick={() => onNavigate("run")}>
           Run payroll <ArrowRight size={15} />
         </button>
       </div>

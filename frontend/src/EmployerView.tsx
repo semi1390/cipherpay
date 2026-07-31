@@ -195,20 +195,20 @@ export default function EmployerView({ conn, treasuryAddr, meta }: Props) {
 
       {ownerLoading ? (
         <div className="note accent">
-          <Spinner size={16} className="spin" /> Checking treasury owner…
+          <Spinner size={16} className="spin" /> Checking treasury…
         </div>
-      ) : !isOwner ? (
-        <div className="note warn">
-          <Shield size={16} />
-          <span>
-            This wallet ({shortAddr(conn.address)}) is <b>not the treasury owner</b>. Only the owner can
-            fund or run payroll. Connect: <span className="mono">{owner ?? "unknown"}</span>.
-          </span>
-        </div>
-      ) : (
+      ) : isOwner ? (
         <div style={{ marginTop: 15 }}>
           <span className="pill ok">
             <CheckCircle size={15} /> You are the treasury owner
+          </span>
+        </div>
+      ) : (
+        <div className="note accent" style={{ marginTop: 15 }}>
+          <Shield size={16} />
+          <span>
+            <b>Demo mode — be your own employer.</b> Get test USDC, wrap it into the treasury, and run a
+            payroll to addresses you control. Then switch to a paid wallet and reveal/withdraw in My Pay.
           </span>
         </div>
       )}
@@ -218,7 +218,7 @@ export default function EmployerView({ conn, treasuryAddr, meta }: Props) {
         <Coins size={16} />
         <span>
           Your balance: <b>{usdcBalance !== null ? `${fmt(usdcBalance)} ${meta.underlyingSymbol}` : "…"}</b>
-          {isOwner && (
+          {(
             <>
               {" · "}
               <button className="textbtn" onClick={onFaucet} disabled={fauceting}>
@@ -244,11 +244,11 @@ export default function EmployerView({ conn, treasuryAddr, meta }: Props) {
           value={fundAmount}
           onChange={(e) => setFundAmount(e.target.value)}
           inputMode="decimal"
-          disabled={funding || !isOwner}
+          disabled={funding}
         />
       </div>
       <div className="field">
-        <button className="btn" onClick={onFund} disabled={funding || !isOwner}>
+        <button className="btn" onClick={onFund} disabled={funding}>
           {funding ? (
             <>
               <Spinner size={16} className="spin" /> Wrapping…
@@ -326,7 +326,7 @@ export default function EmployerView({ conn, treasuryAddr, meta }: Props) {
       </button>
 
       <div className="field">
-        <button className="btn btn-primary btn-block" onClick={onRunPayroll} disabled={running || !isOwner}>
+        <button className="btn btn-primary btn-block" onClick={onRunPayroll} disabled={running}>
           {running ? (
             <>
               <Spinner size={16} className="spin" /> Running payroll…

@@ -2,11 +2,11 @@
 
 **Real USDC in. Salaries paid privately. Real USDC out.** Every payment is publicly verifiable on-chain — every amount stays encrypted.
 
-Built on [iExec Nox](https://docs.iex.ec/nox-protocol) confidential smart contracts (ERC-7984) on **Arbitrum Sepolia**.
+Built on [iExec Nox](https://docs.iex.ec/nox-protocol) confidential smart contracts (ERC-7984) on **Ethereum Sepolia**.
 
 - 🌐 **Live app:** https://cipherpay-delta.vercel.app
 - 🎥 **Demo video:** _[link coming soon]_
-- 📜 **Deployed on:** Arbitrum Sepolia (chainId 421614)
+- 📜 **Deployed on:** Ethereum Sepolia (chainId 11155111)
 
 ---
 
@@ -42,7 +42,7 @@ Money goes in as real (test) USDC, moves through payroll with every amount encry
 
 ## What's public vs. what's private
 
-| Public (verifiable on Arbiscan) | Private (encrypted, holder-only) |
+| Public (verifiable on Etherscan) | Private (encrypted, holder-only) |
 |---|---|
 | That a payroll run happened | How much each employee was paid |
 | Number of employees in a run | Each employee's confidential balance |
@@ -77,13 +77,15 @@ Money goes in as real (test) USDC, moves through payroll with every amount encry
 
 ---
 
-## Deployed contracts (Arbitrum Sepolia)
+## Deployed contracts (Ethereum Sepolia)
 
 | Contract | Address |
 |---|---|
-| Treasury | [`0x261fb2B3ce89a9cAfFd05d3cCF9Ed24AF2199c4A`](https://sepolia.arbiscan.io/address/0x261fb2B3ce89a9cAfFd05d3cCF9Ed24AF2199c4A) |
-| Wrapper / cpUSD | [`0xC0591392714F020Cbc54386553c0F35F3ebBA0Bb`](https://sepolia.arbiscan.io/address/0xC0591392714F020Cbc54386553c0F35F3ebBA0Bb) |
-| MockUSDC | [`0x220dF2553818B82540d1E758473E7d83Fb6F03Cf`](https://sepolia.arbiscan.io/address/0x220dF2553818B82540d1E758473E7d83Fb6F03Cf) |
+| Treasury | [`0x220dF2553818B82540d1E758473E7d83Fb6F03Cf`](https://sepolia.etherscan.io/address/0x220dF2553818B82540d1E758473E7d83Fb6F03Cf) |
+| Wrapper / cpUSD | [`0xff32F741b4980F5185F715091E98c4357Ec51227`](https://sepolia.etherscan.io/address/0xff32F741b4980F5185F715091E98c4357Ec51227) |
+| MockUSDC | [`0xE0B4D8dB739A1AEa23516Cad5d3A2804142d21eA`](https://sepolia.etherscan.io/address/0xE0B4D8dB739A1AEa23516Cad5d3A2804142d21eA) |
+
+> `MockUSDC` is a test stand-in for real USDC (real USDC only exists on mainnet). The wrapper accepts **any** ERC-20, so on mainnet you point it at canonical USDC and nothing else changes.
 
 ---
 
@@ -92,42 +94,44 @@ Money goes in as real (test) USDC, moves through payroll with every amount encry
 - **Landing** — the privacy pitch and the before/after of on-chain payroll.
 - **Dashboard** — payroll stats and the encrypted treasury balance (owner-only reveal).
 - **Run Payroll** — get test USDC → wrap → pay employees hidden amounts in one run.
-- **History** — every payroll run, publicly verifiable, with 🔒 encrypted amounts and Arbiscan links.
+- **History** — every payroll run, publicly verifiable, with 🔒 encrypted amounts and Etherscan links.
 - **My Pay** — an employee reveals only their own pay, then withdraws back to real USDC.
 
 ---
 
 ## Run it locally
 
-**Prerequisites:** Node 22+, an Arbitrum Sepolia RPC (e.g. Alchemy), and a browser wallet (MetaMask).
+**Prerequisites:** Node 22+, an Ethereum Sepolia RPC (e.g. Alchemy), a free [Etherscan API key](https://etherscan.io/apis) (for the History page), and a browser wallet (MetaMask).
 
 ```bash
 git clone https://github.com/semi1390/cipherpay.git
 cd cipherpay/frontend
 npm install
 cp .env.example .env   # then fill in the values below
-npm run dev
+npm run dev            # http://localhost:5173
 ```
 
 **Environment variables** (`frontend/.env`):
 
 ```
-VITE_RPC_URL=<your Arbitrum Sepolia RPC URL>
-VITE_ARBISCAN_API_KEY=<your Arbiscan API key>   # used by the History page to read run events
-# (plus the deployed contract addresses if not hard-coded — see .env.example)
+VITE_ARBITRUM_RPC_URL=<your Ethereum Sepolia RPC URL>
+VITE_TREASURY_ADDRESS=0x220dF2553818B82540d1E758473E7d83Fb6F03Cf
+VITE_ARBISCAN_API_KEY=<your Etherscan API key>   # History page reads run events
 ```
 
-To run the contract demo scripts (deploy + confidential round-trip) from the repo root:
+> The `VITE_ARBITRUM_RPC_URL` / `VITE_ARBISCAN_API_KEY` names are legacy from an earlier Arbitrum deployment — the **values** target Ethereum Sepolia and Etherscan. Connect MetaMask on **Ethereum Sepolia** (chainId 11155111).
+
+**Contract demo scripts** (deploy + confidential round-trip) from the repo root:
 
 ```bash
 npm install
-# set SEPOLIA_RPC_URL / RPC_URL + PRIVATE_KEY in the root .env
+# set SEPOLIA_RPC_URL (Ethereum Sepolia) + PRIVATE_KEY in the root .env
 npx hardhat compile
-npx tsx scripts/tokenDemo.ts      # confidential token: mint → hidden transfer → decrypt
-npx tsx scripts/treasuryDemo.ts   # full payroll: fund → hidden batch payouts → employees decrypt
+npx tsx scripts/deployWrapperPayroll.ts   # deploy MockUSDC + CipherPayWrapper + Treasury
+npx tsx scripts/wrapperPayrollDemo.ts     # full round-trip: wrap USDC → hidden payroll → each employee decrypts → unwrap back to real USDC
 ```
 
-> ⚠️ **Use a throwaway/burner wallet** funded only with Arbitrum Sepolia testnet ETH. Never put the private key of a wallet holding real funds into `.env`.
+> ⚠️ **Use a throwaway/burner wallet** funded only with Ethereum Sepolia testnet ETH. Never put the private key of a wallet holding real funds into `.env`.
 
 ---
 
@@ -135,10 +139,10 @@ npx tsx scripts/treasuryDemo.ts   # full payroll: fund → hidden batch payouts 
 
 CipherPay uses the Nox confidential stack meaningfully at its core — it is not a superficial integration:
 
-- **Confidential ERC-7984 token** (`@iexec-nox/nox-confidential-contracts`) with `euint256` encrypted balances — the payroll currency itself.
-- **Nox Library** (`euint256`, `fromExternal`, `allowTransient`, per-holder ACL) for the self-paying confidential treasury.
+- **Confidential ERC-7984 token** (`@iexec-nox/nox-confidential-contracts`) with `euint256` encrypted balances — the payroll currency itself, plus the `ERC20ToERC7984Wrapper` that bridges real USDC.
+- **Nox Library** (`euint256`, `fromExternal`, `allowTransient`, `allowPublicDecryption`, `publicDecrypt`, per-holder ACL) for the self-paying confidential treasury and the unwrap-to-USDC flow.
 - **`@iexec-nox/handle` JS SDK** for in-browser encryption and holder-only decryption, wired directly into the frontend.
-- Deployed and running against Nox's **Handle Gateway + indexer** on Arbitrum Sepolia.
+- Deployed and running against Nox's **Handle Gateway + indexer** on Ethereum Sepolia.
 
 Without Nox's confidential execution, hidden-amount payroll on a public chain isn't possible — the confidentiality is the product, not a feature bolted on top.
 
@@ -147,9 +151,10 @@ Without Nox's confidential execution, hidden-amount payroll on a public chain is
 ## What was newly built vs. reused
 
 **Newly built during the hackathon (from scratch):**
-- `CipherPayToken` — a Nox ERC-7984 confidential payroll token.
-- `CipherPayrollTreasury` — a self-paying confidential treasury with batch hidden payouts.
-- The USDC wrap → payroll → unwrap round-trip and the two-step gateway withdrawal.
+- `CipherPayrollTreasury` — a self-paying confidential treasury with batch hidden payouts in one transaction.
+- `CipherPayWrapper` (cpUSD) — a Nox ERC-7984 confidential token backed 1:1 by real USDC (wrap / unwrap).
+- `MockUSDC` — a test USDC stand-in for the underlying ERC-20.
+- The USDC wrap → payroll → unwrap round-trip and the two-step gateway withdrawal (`unwrap → publicDecrypt → finalizeUnwrap`).
 - The anti-equality salting scheme.
 - The full 5-page frontend with in-browser Nox encryption/decryption.
 
@@ -167,11 +172,11 @@ The anti-equality salting prevents inferring equal salaries from storage, but do
 
 ## Tech stack
 
-Solidity 0.8.35 · iExec Nox (ERC-7984, `euint256`) · Hardhat 3 · TypeScript · React + Vite · ethers v6 · `@iexec-nox/handle` · Arbitrum Sepolia · Vercel.
+Solidity 0.8.35 · iExec Nox (ERC-7984, `euint256`) · Hardhat 3 · TypeScript · React + Vite · ethers v6 · `@iexec-nox/handle` · Ethereum Sepolia · Vercel.
 
 ## Roadmap / next steps
 
-- Real USDC on Arbitrum mainnet (swap MockUSDC for canonical USDC).
+- Real USDC on Ethereum mainnet (swap MockUSDC for canonical USDC).
 - Recurring / scheduled payroll runs.
 - Multi-token payroll and employee-side spending integrations.
 - Employer-delegated auditor access (grant a specific auditor decrypt rights to totals).
