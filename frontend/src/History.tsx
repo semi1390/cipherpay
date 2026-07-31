@@ -42,8 +42,8 @@ export default function History({ conn, treasuryAddr }: Props) {
         <div className="note accent">
           <HistoryIcon size={16} />
           <span>
-            Payroll history needs a free Arbiscan API key. Add <code>VITE_ARBISCAN_API_KEY</code> to your{" "}
-            <code>.env</code> (get one at arbiscan.io) and restart the dev server. Runs still happen
+            Payroll history needs a free Etherscan API key. Add <code>VITE_ARBISCAN_API_KEY</code> to your{" "}
+            <code>.env</code> (get one at etherscan.io) and restart the dev server. Runs still happen
             on-chain — this only powers the history view.
           </span>
         </div>
@@ -79,7 +79,7 @@ export default function History({ conn, treasuryAddr }: Props) {
                 target="_blank"
                 rel="noreferrer"
               >
-                Arbiscan <ArrowUpRight size={13} />
+                Etherscan <ArrowUpRight size={13} />
               </a>
             </div>
           ))}
@@ -88,7 +88,7 @@ export default function History({ conn, treasuryAddr }: Props) {
 
       {runs && runs.length > 0 && (
         <div style={{ marginTop: 16, fontSize: 12.5, color: "var(--muted)", display: "flex", gap: 8, alignItems: "center" }}>
-          <HistoryIcon size={14} /> Open any run on Arbiscan — the transaction is public, but the paid
+          <HistoryIcon size={14} /> Open any run on Etherscan — the transaction is public, but the paid
           amounts never appear.
         </div>
       )}

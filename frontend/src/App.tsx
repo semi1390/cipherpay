@@ -134,7 +134,7 @@ export default function App() {
               CipherPay
             </div>
             <span className="chip">
-              <Shield size={13} /> Arbitrum Sepolia
+              <Shield size={13} /> Ethereum Sepolia
             </span>
           </div>
         </header>
@@ -171,7 +171,7 @@ export default function App() {
                   <div className="wm-backdrop" onClick={() => setMenuOpen(false)} />
                   <div className="wallet-dropdown">
                     <div className="wm-head">
-                      <span className="dot" /> Arbitrum Sepolia
+                      <span className="dot" /> Ethereum Sepolia
                       <span className="wm-addr">{shortAddr(conn.address)}</span>
                     </div>
                     <button
@@ -190,7 +190,7 @@ export default function App() {
                       rel="noreferrer"
                       onClick={() => setMenuOpen(false)}
                     >
-                      <ArrowUpRight size={15} /> View on Arbiscan
+                      <ArrowUpRight size={15} /> View on Etherscan
                     </a>
                     <button
                       className="wm-item"
@@ -245,7 +245,7 @@ export default function App() {
                 <div>
                   <h2 className="title">Connect your treasury</h2>
                   <p className="desc">
-                    Enter your deployed CipherPayrollTreasury address on Arbitrum Sepolia (the{" "}
+                    Enter your deployed CipherPayrollTreasury address on Ethereum Sepolia (the{" "}
                     <code>treasury</code> field from <code>deployment.payroll-treasury.json</code>), or
                     set <code>VITE_TREASURY_ADDRESS</code> in <code>.env</code>.
                   </p>
@@ -290,7 +290,7 @@ export default function App() {
                 <span>Treasury</span>
                 <span className="mono">{shortAddr(treasury)}</span>
                 <a className="link" href={`${EXPLORER}/address/${treasury}`} target="_blank" rel="noreferrer">
-                  Arbiscan <ArrowUpRight size={13} />
+                  Etherscan <ArrowUpRight size={13} />
                 </a>
                 <button className="textbtn" onClick={() => setTreasury("")}>
                   change

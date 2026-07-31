@@ -57,7 +57,7 @@ export default function Dashboard({ conn, treasuryAddr, meta, onNavigate }: Prop
         setReveal(isZeroHandle(balHandle) ? { kind: "empty" } : { kind: "hidden" });
         setStats({ runs: Number(runsCount), employees: null, lastRun: null });
 
-        // Richer stats from event history (Arbiscan) — best effort.
+        // Richer stats from event history (Etherscan) — best effort.
         try {
           const [runs, pays] = await Promise.all([
             fetchPayrollRuns(conn.readProvider, treasuryAddr),
@@ -71,7 +71,7 @@ export default function Dashboard({ conn, treasuryAddr, meta, onNavigate }: Prop
             lastRun: runs.length ? runs[0].timestamp : null,
           });
         } catch {
-          /* history unavailable (no Arbiscan key) — keep run count from batchCount */
+          /* history unavailable (no Etherscan key) — keep run count from batchCount */
         }
       } catch (e) {
         if (!cancelled) setReveal({ kind: "error", message: fullError(e) });

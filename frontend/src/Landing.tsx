@@ -4,7 +4,7 @@ export default function Landing({ onConnect, connecting }: { onConnect: () => vo
   return (
     <section className="hero">
       <span className="eyebrow">
-        <Lock size={13} /> Confidential on-chain payroll · Arbitrum
+        <Lock size={13} /> Confidential on-chain payroll · Ethereum
       </span>
       <h1 className="hero-title">
         Pay your team on-chain.
@@ -28,7 +28,7 @@ export default function Landing({ onConnect, connecting }: { onConnect: () => vo
             </>
           )}
         </button>
-        <span className="chip">MetaMask · Arbitrum Sepolia</span>
+        <span className="chip">MetaMask · Ethereum Sepolia</span>
       </div>
 
       {/* the privacy problem, before/after */}
@@ -91,7 +91,7 @@ export default function Landing({ onConnect, connecting }: { onConnect: () => vo
       {/* a real public tx — with the amount hidden */}
       <div className="txmock">
         <div className="txmock-top">
-          <Shield size={14} /> Arbitrum Sepolia · confidential transfer
+          <Shield size={14} /> Ethereum Sepolia · confidential transfer
           <span className="txmock-badge">
             <CheckCircle size={13} /> Success
           </span>

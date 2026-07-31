@@ -38,7 +38,7 @@ export function getInjected(): NonNullable<Window["ethereum"]> {
 }
 
 /**
- * Dedicated Arbitrum Sepolia read RPC (same idea as the Ethereum-Sepolia app):
+ * Dedicated Ethereum Sepolia read RPC (same idea as the Ethereum-Sepolia app):
  * the SDK and reads go through this, not the wallet's RPC. batchMaxCount:1 avoids
  * the "could not coalesce" 404s some wallet/proxy RPCs throw on batched requests.
  */
@@ -46,7 +46,7 @@ export function getReadProvider(): JsonRpcProvider {
   const url = import.meta.env.VITE_ARBITRUM_RPC_URL;
   if (!url) {
     throw new Error(
-      "Missing VITE_ARBITRUM_RPC_URL. Create .env with your Arbitrum Sepolia RPC (see .env.example)."
+      "Missing VITE_ARBITRUM_RPC_URL. Create .env with your Ethereum Sepolia RPC (see .env.example)."
     );
   }
   const net = Network.from(11155111);
@@ -230,10 +230,10 @@ export function isZeroHandle(handle: string): boolean {
   }
 }
 
-// ---- payroll history (via Arbiscan / Etherscan V2 logs API) -------------
+// ---- payroll history (via Etherscan / Etherscan V2 logs API) -------------
 // Arbitrum blocks are extremely fast and Alchemy's free tier caps eth_getLogs
 // at a 10-block range, so scanning logs over RPC is impractical here. We read
-// the contract's events from the Arbiscan (Etherscan V2) logs API, which returns
+// the contract's events from the Etherscan (Etherscan V2) logs API, which returns
 // the full history — with timestamps and tx hashes — in a single request.
 export interface PayrollRunInfo {
   batchId: bigint;
@@ -252,7 +252,7 @@ export interface EmployeePayInfo {
 
 export class HistoryUnavailableError extends Error {
   constructor() {
-    super("Payroll history needs an Arbiscan API key. Set VITE_ARBISCAN_API_KEY in .env (free from arbiscan.io / etherscan.io).");
+    super("Payroll history needs an Etherscan API key. Set VITE_ARBISCAN_API_KEY in .env (free from etherscan.io / etherscan.io).");
     this.name = "HistoryUnavailableError";
   }
 }
@@ -293,14 +293,14 @@ async function arbiscanGetLogs(treasuryAddr: string, topic0: string, topic2?: st
   const json = await res.json();
   if (json.status === "0") {
     if (/no records/i.test(json.message || "")) return [];
-    throw new Error(`Arbiscan: ${json.message || "error"}${typeof json.result === "string" ? ` — ${json.result}` : ""}`);
+    throw new Error(`Etherscan: ${json.message || "error"}${typeof json.result === "string" ? ` — ${json.result}` : ""}`);
   }
   return (json.result as RawLog[]) ?? [];
 }
 
 const toInt = (hex: string) => parseInt(hex, 16);
 
-/** All payroll runs (newest first). Amounts are never in events. Needs Arbiscan key. */
+/** All payroll runs (newest first). Amounts are never in events. Needs Etherscan key. */
 export async function fetchPayrollRuns(_readProvider: JsonRpcProvider, treasuryAddr: string): Promise<PayrollRunInfo[]> {
   const logs = await arbiscanGetLogs(treasuryAddr, TOPIC_PAYROLL_RUN);
   return logs
@@ -314,7 +314,7 @@ export async function fetchPayrollRuns(_readProvider: JsonRpcProvider, treasuryA
     .sort((a, b) => b.blockNumber - a.blockNumber);
 }
 
-/** EmployeePaid events (newest first); pass `employee` to filter to one wallet. Needs Arbiscan key. */
+/** EmployeePaid events (newest first); pass `employee` to filter to one wallet. Needs Etherscan key. */
 export async function fetchEmployeePayments(
   _readProvider: JsonRpcProvider,
   treasuryAddr: string,

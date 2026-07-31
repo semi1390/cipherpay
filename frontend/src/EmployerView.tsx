@@ -280,7 +280,7 @@ export default function EmployerView({ conn, treasuryAddr, meta }: Props) {
           <span>
             Wrapped into the treasury.{" "}
             <a className="link" href={`${EXPLORER}/tx/${fund.txHash}`} target="_blank" rel="noreferrer">
-              View on Arbiscan <ArrowUpRight size={13} />
+              View on Etherscan <ArrowUpRight size={13} />
             </a>
           </span>
         </div>
@@ -361,7 +361,7 @@ export default function EmployerView({ conn, treasuryAddr, meta }: Props) {
               <CheckCircle size={16} />
               <span className="k">Payroll settled on-chain</span>
               <a className="v link" href={`${EXPLORER}/tx/${payroll.txHash}`} target="_blank" rel="noreferrer">
-                Arbiscan <ArrowUpRight size={13} />
+                Etherscan <ArrowUpRight size={13} />
               </a>
             </div>
             <div className="privacy-row">

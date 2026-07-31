@@ -181,7 +181,7 @@ export default function MyPay({ conn, treasuryAddr, meta }: Props) {
               <div className="payslip-heading">You were paid</div>
               <div className="payslip-sub">
                 {load.payments.length > 0
-                  ? `${load.payments.length} confidential ${load.payments.length === 1 ? "payment" : "payments"} · verifiable on Arbiscan`
+                  ? `${load.payments.length} confidential ${load.payments.length === 1 ? "payment" : "payments"} · verifiable on Etherscan`
                   : "Confidential balance received"}
               </div>
             </div>
@@ -317,7 +317,7 @@ export default function MyPay({ conn, treasuryAddr, meta }: Props) {
                 <div className="reveal-unit">{meta.underlyingSymbol} balance</div>
                 <div className="reveal-note">
                   <a className="link" href={`${EXPLORER}/tx/${withdraw.txHash}`} target="_blank" rel="noreferrer">
-                    View withdrawal on Arbiscan <ArrowUpRight size={13} />
+                    View withdrawal on Etherscan <ArrowUpRight size={13} />
                   </a>
                 </div>
               </div>
