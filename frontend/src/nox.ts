@@ -1,10 +1,11 @@
 import { BrowserProvider, JsonRpcProvider, JsonRpcSigner, Contract, Interface, isAddress, Network, id, getAddress } from "ethers";
 import { createEthersHandleClient, NotYetComputedHandleError } from "@iexec-nox/handle";
 
-// ---- Arbitrum Sepolia (Nox confidential payroll treasury lives here) ----
-export const ARBITRUM_CHAIN_ID = 421614n;
-export const ARBITRUM_HEX = "0x66eee";
-export const EXPLORER = "https://sepolia.arbiscan.io";
+// ---- Ethereum Sepolia (Nox confidential payroll treasury lives here) ----
+// (names kept for minimal churn; values target Ethereum Sepolia)
+export const ARBITRUM_CHAIN_ID = 11155111n;
+export const ARBITRUM_HEX = "0xaa36a7";
+export const EXPLORER = "https://sepolia.etherscan.io";
 
 export type Hex = `0x${string}`;
 
@@ -48,7 +49,7 @@ export function getReadProvider(): JsonRpcProvider {
       "Missing VITE_ARBITRUM_RPC_URL. Create .env with your Arbitrum Sepolia RPC (see .env.example)."
     );
   }
-  const net = Network.from(421614);
+  const net = Network.from(11155111);
   return new JsonRpcProvider(url, net, { staticNetwork: net, batchMaxCount: 1 });
 }
 
@@ -77,20 +78,20 @@ export async function connectWallet(): Promise<Connection> {
           params: [
             {
               chainId: ARBITRUM_HEX,
-              chainName: "Arbitrum Sepolia",
-              nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-              rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc"],
+              chainName: "Sepolia",
+              nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://rpc.sepolia.org"],
               blockExplorerUrls: [EXPLORER],
             },
           ],
         });
       } else {
-        throw new Error("Please switch your wallet to Arbitrum Sepolia to continue.");
+        throw new Error("Please switch your wallet to Ethereum Sepolia to continue.");
       }
     }
     provider = new BrowserProvider(eth);
     net = await provider.getNetwork();
-    if (net.chainId !== ARBITRUM_CHAIN_ID) throw new Error("Wallet is not on Arbitrum Sepolia.");
+    if (net.chainId !== ARBITRUM_CHAIN_ID) throw new Error("Wallet is not on Ethereum Sepolia.");
   }
 
   const signer = await provider.getSigner();
@@ -257,7 +258,7 @@ export class HistoryUnavailableError extends Error {
 }
 
 const ETHERSCAN_V2 = "https://api.etherscan.io/v2/api";
-const CHAIN_ID = "421614";
+const CHAIN_ID = "11155111";
 const TOPIC_PAYROLL_RUN = id("PayrollRun(uint256,uint256)");
 const TOPIC_EMPLOYEE_PAID = id("EmployeePaid(uint256,address)");
 
