@@ -99,6 +99,26 @@ Money goes in as real (test) USDC, moves through payroll with every amount encry
 
 ---
 
+## Try it yourself (no coordination needed)
+
+The live app is fully self-serve — **connect any wallet on Ethereum Sepolia** and run the
+whole flow end-to-end. `runPayroll` and the USDC faucet are open for the demo, so you can be
+both the employer and the employee.
+
+**Prereqs:** MetaMask on Ethereum Sepolia + a little Sepolia ETH for gas
+([sepoliafaucet.com](https://sepoliafaucet.com) or Alchemy's faucet).
+
+1. Open https://cipherpay-delta.vercel.app and connect your wallet.
+2. **Run Payroll** → click **"get 1,000 test USDC"** (public faucet) → **Wrap** e.g. 500 into
+   the treasury.
+3. Add an **employee address you control** (a second wallet, or your own) + an amount, then
+   **Run payroll**. Open the transaction on Etherscan — the amounts aren't in it.
+4. Switch to that employee wallet → **My Pay** → **Reveal my pay** (only that wallet can
+   decrypt it) → **Withdraw to USDC** to receive real (test) USDC back in the wallet.
+
+Everything is on-chain and verifiable — no mock data, no pre-seeded state. Each amount is
+encrypted end-to-end; only the paying transaction and the withdrawal are public.
+
 ## Run it locally
 
 **Prerequisites:** Node 22+, an Ethereum Sepolia RPC (e.g. Alchemy), a free [Etherscan API key](https://etherscan.io/apis) (for the History page), and a browser wallet (MetaMask).
@@ -115,7 +135,7 @@ npm run dev            # http://localhost:5173
 
 ```
 VITE_ARBITRUM_RPC_URL=<your Ethereum Sepolia RPC URL>
-VITE_TREASURY_ADDRESS=0x220dF2553818B82540d1E758473E7d83Fb6F03Cf
+VITE_TREASURY_ADDRESS=0xca4642bE21A66715FA414bf4bE84A5Be6d417Dc7
 VITE_ARBISCAN_API_KEY=<your Etherscan API key>   # History page reads run events
 ```
 
